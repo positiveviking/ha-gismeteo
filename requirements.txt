@@ -1,2 +1,2 @@
-homeassistant
 beautifulsoup4~=4.9
+homeassistant>=2022.2
