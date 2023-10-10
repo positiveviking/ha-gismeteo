@@ -7,7 +7,7 @@ ROOT="$( cd "$( dirname "$(readlink -f "$0")" )/.." >/dev/null 2>&1 && pwd )"
 cd "${ROOT}"
 
 # Load common functions
-source ./bin/_common
+source ./scripts/_common
 
 docker=$(which docker) || die "ERROR: Docker not found."
 
@@ -16,7 +16,7 @@ workdir="/workspaces/${workspace}"
 
 container="dev-${workspace}"
 port="127.0.0.1:9123:8123"
-image="ludeeus/container:integration-debian"
+image="ghcr.io/ludeeus/devcontainer/integration:stable"
 volume="${ROOT}:${workdir}"
 
 cmd="menu"
@@ -72,9 +72,9 @@ docker_start() {
 }
 
 bootstrap() {
-    if test -f "${ROOT}/.devcontainer/bootstrap.sh"; then
+    if test -f "${ROOT}/config/bootstrap.sh"; then
         log.info "Execute bootstrap.sh..."
-        ${docker} exec -it -w "${workdir}" "${container}" .devcontainer/bootstrap.sh "$1"
+        ${docker} exec -it -w "${workdir}" "${container}" config/bootstrap.sh "$1"
     fi
 }
 
