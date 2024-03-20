@@ -7,7 +7,7 @@ import pytest
 from aiohttp import ClientSession
 from asynctest import CoroutineMock
 from homeassistant.components.weather import ATTR_WEATHER_WIND_SPEED
-from homeassistant.const import ATTR_ID, HTTP_OK, STATE_UNKNOWN
+from homeassistant.const import ATTR_ID, HTTPStatus.OK, STATE_UNKNOWN
 from homeassistant.util import dt as dt_util
 from pytest import raises
 from pytest_homeassistant_custom_component.common import load_fixture
@@ -82,7 +82,7 @@ async def test__get():
 @patch("aiohttp.ClientSession.get")
 async def test__async_get_data(mock_get):
     """Test with valid location data."""
-    mock_get.return_value.__aenter__.return_value.status = HTTP_OK
+    mock_get.return_value.__aenter__.return_value.status = HTTPStatus.OK
     mock_get.return_value.__aenter__.return_value.text = CoroutineMock(
         return_value="qwe"
     )

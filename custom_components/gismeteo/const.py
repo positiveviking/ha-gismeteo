@@ -34,6 +34,8 @@ DOMAIN: Final = "gismeteo"
 VERSION: Final = "3.0.0.dev0"
 ATTRIBUTION: Final = "Data provided by Gismeteo"
 ISSUE_URL: Final = "https://github.com/Limych/ha-gismeteo/issues"
+#
+DOMAIN_YAML: Final = f"{DOMAIN}_yaml"
 
 STARTUP_MESSAGE: Final = f"""
 -------------------------------------------------------------------
@@ -75,6 +77,8 @@ ATTR_WEATHER_STORM: Final = "storm"
 ATTR_WEATHER_GEOMAGNETIC_FIELD: Final = "gm_field"
 ATTR_WEATHER_PHENOMENON: Final = "phenomenon"
 ATTR_WEATHER_WATER_TEMPERATURE: Final = "water_temperature"
+ATTR_WEATHER_ALLERGY_BIRCH = "allergy_birch"
+ATTR_WEATHER_UV_INDEX = "uv_index"
 #
 ATTR_FORECAST_HUMIDITY: Final = "humidity"
 ATTR_FORECAST_PRESSURE: Final = "pressure"
@@ -89,10 +93,16 @@ ATTR_FORECAST_PHENOMENON: Final = ATTR_WEATHER_PHENOMENON
 ATTR_LAT = "lat"
 ATTR_LON = "lon"
 
+COORDINATOR = "coordinator"
+UNDO_UPDATE_LISTENER = "undo_update_listener"
 
 ENDPOINT_URL: Final = "https://services.gismeteo.ru/inform-service/inf_chrome"
+#
+PARSER_URL_FORMAT = "https://www.gismeteo.ru/weather-{}/10-days/"
+PARSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
 
 UPDATE_INTERVAL: Final = timedelta(minutes=5)
+PARSED_UPDATE_INTERVAL = timedelta(minutes=61)
 LOCATION_MAX_CACHE_INTERVAL: Final = timedelta(days=7)
 FORECAST_MAX_CACHE_INTERVAL: Final = timedelta(hours=3)
 

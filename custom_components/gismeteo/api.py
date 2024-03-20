@@ -11,6 +11,7 @@ https://github.com/Limych/ha-gismeteo/
 import logging
 import math
 import time
+from http import HTTPStatus
 import xml.etree.ElementTree as etree  # type: ignore
 from datetime import datetime
 from typing import Any, Callable, Optional
@@ -48,7 +49,6 @@ from homeassistant.const import (
     ATTR_ID,
     ATTR_LATITUDE,
     ATTR_LONGITUDE,
-    HTTP_OK,
     STATE_UNKNOWN,
 )
 from homeassistant.util import Throttle
@@ -215,7 +215,7 @@ class GismeteoApiClient:
             headers["User-Agent"] = PARSER_USER_AGENT
 
         async with self._session.get(url, headers=headers) as resp:
-            if resp.status != HTTP_OK:
+            if resp.status != HTTPStatus.OK:
                 raise ApiError(f"Invalid response from Gismeteo API: {resp.status}")
             _LOGGER.debug("Data retrieved from %s, status: %s", url, resp.status)
             data = await resp.text()
