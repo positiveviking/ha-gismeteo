@@ -1,13 +1,12 @@
 # pylint: disable=protected-access,redefined-outer-name
 """Tests for Gismeteo integration."""
-
-from asynctest import Mock
-from homeassistant.const import ATTR_ID
-from homeassistant.core import HomeAssistant
+from unittest.mock import Mock
 
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
 from custom_components.gismeteo.const import DOMAIN, NAME
 from custom_components.gismeteo.entity import GismeteoEntity
+from homeassistant.const import ATTR_ID
+from homeassistant.core import HomeAssistant
 
 from tests.const import FAKE_UNIQUE_ID
 

@@ -1,18 +1,17 @@
 # pylint: disable=protected-access,redefined-outer-name
 """Tests for Gismeteo integration."""
-
-from asynctest import Mock, patch
-from homeassistant.const import (
-    ATTR_ATTRIBUTION,
-    CONF_MONITORED_CONDITIONS,
-    DEVICE_CLASS_TEMPERATURE,
-    TEMP_CELSIUS,
-)
-from homeassistant.core import HomeAssistant
+from unittest.mock import Mock, patch
 
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
 from custom_components.gismeteo.const import ATTRIBUTION
 from custom_components.gismeteo.sensor import GismeteoSensor, _fix_kinds, _gen_entities
+from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.const import (
+    ATTR_ATTRIBUTION,
+    CONF_MONITORED_CONDITIONS,
+    UnitOfTemperature,
+)
+from homeassistant.core import HomeAssistant
 
 from tests.const import FAKE_UNIQUE_ID
 
@@ -85,7 +84,7 @@ async def test_entity_initialization(hass: HomeAssistant):
     assert sensor.should_poll is False
     assert sensor.available is True
     assert sensor.state == "asd"
-    assert sensor.unit_of_measurement == TEMP_CELSIUS
+    assert sensor.unit_of_measurement == UnitOfTemperature.CELSIUS
     assert sensor.icon is None
-    assert sensor.device_class == DEVICE_CLASS_TEMPERATURE
+    assert sensor.device_class == SensorDeviceClass.TEMPERATURE
     assert sensor.device_state_attributes == expected_attributes

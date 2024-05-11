@@ -1,4 +1,4 @@
-#  Copyright (c) 2019-2023, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2024, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
 """The Gismeteo component.
@@ -10,7 +10,7 @@ https://github.com/Limych/ha-gismeteo/
 from datetime import timedelta
 from typing import Final
 
-from homeassistant.components.sensor import DOMAIN as SENSOR
+from homeassistant.components.sensor import DOMAIN as SENSOR, SensorDeviceClass
 from homeassistant.components.weather import ATTR_FORECAST_CONDITION, DOMAIN as WEATHER
 from homeassistant.const import (
     ATTR_DEVICE_CLASS,
@@ -18,14 +18,11 @@ from homeassistant.const import (
     ATTR_NAME,
     ATTR_UNIT_OF_MEASUREMENT,
     DEGREE,
-    DEVICE_CLASS_HUMIDITY,
-    DEVICE_CLASS_PRESSURE,
-    DEVICE_CLASS_TEMPERATURE,
-    LENGTH_MILLIMETERS,
     PERCENTAGE,
-    PRESSURE_HPA,
-    SPEED_METERS_PER_SECOND,
-    TEMP_CELSIUS,
+    UnitOfLength,
+    UnitOfPressure,
+    UnitOfSpeed,
+    UnitOfTemperature,
 )
 
 # Base component constants
@@ -53,8 +50,10 @@ PLATFORMS: Final = [SENSOR, WEATHER]
 # Configuration and options
 CONF_CACHE_DIR: Final = "cache_dir"
 CONF_FORECAST: Final = "forecast"
+CONF_FORECAST_DAYS: Final = "forecast_days"
 CONF_PLATFORMS: Final = "platforms"
 CONF_YAML: Final = "_yaml"
+CONF_PLATFORM_FORMAT: Final = "_platform_{}"
 
 FORECAST_MODE_HOURLY: Final = "hourly"
 FORECAST_MODE_DAILY: Final = "daily"
@@ -90,19 +89,21 @@ ATTR_FORECAST_STORM: Final = ATTR_WEATHER_STORM
 ATTR_FORECAST_GEOMAGNETIC_FIELD: Final = ATTR_WEATHER_GEOMAGNETIC_FIELD
 ATTR_FORECAST_PHENOMENON: Final = ATTR_WEATHER_PHENOMENON
 #
-ATTR_LAT = "lat"
-ATTR_LON = "lon"
+ATTR_LAT: Final = "lat"
+ATTR_LON: Final = "lon"
 
-COORDINATOR = "coordinator"
-UNDO_UPDATE_LISTENER = "undo_update_listener"
+COORDINATOR: Final = "coordinator"
+UNDO_UPDATE_LISTENER: Final = "undo_update_listener"
 
 ENDPOINT_URL: Final = "https://services.gismeteo.ru/inform-service/inf_chrome"
 #
-PARSER_URL_FORMAT = "https://www.gismeteo.ru/weather-{}/10-days/"
-PARSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
+PARSER_URL_FORMAT: Final = "https://www.gismeteo.ru/weather-{}/10-days/"
+PARSER_USER_AGENT: Final = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.182 Safari/537.36 Edg/88.0.705.81"
+)
 
 UPDATE_INTERVAL: Final = timedelta(minutes=5)
-PARSED_UPDATE_INTERVAL = timedelta(minutes=61)
+PARSED_UPDATE_INTERVAL: Final = timedelta(minutes=61)
 LOCATION_MAX_CACHE_INTERVAL: Final = timedelta(days=7)
 FORECAST_MAX_CACHE_INTERVAL: Final = timedelta(hours=3)
 
@@ -146,40 +147,34 @@ SENSOR_TYPES: Final = {
         ATTR_UNIT_OF_MEASUREMENT: None,
     },
     "temperature": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         ATTR_ICON: None,
         ATTR_NAME: "Temperature",
-        ATTR_UNIT_OF_MEASUREMENT: TEMP_CELSIUS,
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfTemperature.CELSIUS,
     },
     "temperature_feels_like": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         ATTR_ICON: None,
         ATTR_NAME: "Temperature Feels Like",
-        ATTR_UNIT_OF_MEASUREMENT: TEMP_CELSIUS,
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfTemperature.CELSIUS,
     },
     "humidity": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_HUMIDITY,
+        ATTR_DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
         ATTR_ICON: None,
         ATTR_NAME: "Humidity",
         ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE,
     },
     "pressure": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
+        ATTR_DEVICE_CLASS: SensorDeviceClass.PRESSURE,
         ATTR_ICON: None,
         ATTR_NAME: "Pressure",
-        ATTR_UNIT_OF_MEASUREMENT: PRESSURE_HPA,
-    },
-    "pressure_mmhg": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_PRESSURE,
-        ATTR_ICON: None,
-        ATTR_NAME: "Pressure mmHg",
-        ATTR_UNIT_OF_MEASUREMENT: "mmHg",
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfPressure.HPA,
     },
     "wind_speed": {
         ATTR_DEVICE_CLASS: None,
         ATTR_ICON: "mdi:weather-windy",
         ATTR_NAME: "Wind speed",
-        ATTR_UNIT_OF_MEASUREMENT: SPEED_METERS_PER_SECOND,
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfSpeed.METERS_PER_SECOND,
     },
     "wind_bearing": {
         ATTR_DEVICE_CLASS: None,
@@ -197,13 +192,13 @@ SENSOR_TYPES: Final = {
         ATTR_DEVICE_CLASS: None,
         ATTR_ICON: "mdi:weather-rainy",
         ATTR_NAME: "Rain",
-        ATTR_UNIT_OF_MEASUREMENT: LENGTH_MILLIMETERS,
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfLength.MILLIMETERS,
     },
     "snow": {
         ATTR_DEVICE_CLASS: None,
         ATTR_ICON: "mdi:weather-snowy",
         ATTR_NAME: "Snow",
-        ATTR_UNIT_OF_MEASUREMENT: LENGTH_MILLIMETERS,
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfLength.MILLIMETERS,
     },
     "storm": {
         ATTR_DEVICE_CLASS: None,
@@ -218,10 +213,10 @@ SENSOR_TYPES: Final = {
         ATTR_UNIT_OF_MEASUREMENT: "",
     },
     "water_temperature": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_TEMPERATURE,
+        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
         ATTR_ICON: None,
         ATTR_NAME: "Water Temperature",
-        ATTR_UNIT_OF_MEASUREMENT: TEMP_CELSIUS,
+        ATTR_UNIT_OF_MEASUREMENT: UnitOfTemperature.CELSIUS,
     },
 }
 FORECAST_SENSOR_TYPE: Final = {
@@ -230,6 +225,3 @@ FORECAST_SENSOR_TYPE: Final = {
     ATTR_NAME: "3h Forecast",
     ATTR_UNIT_OF_MEASUREMENT: None,
 }
-
-COORDINATOR: Final = "coordinator"
-UNDO_UPDATE_LISTENER: Final = "undo_update_listener"

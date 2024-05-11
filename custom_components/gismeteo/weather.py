@@ -1,8 +1,7 @@
-#  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2024, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
-"""
-The Gismeteo component.
+"""The Gismeteo component.
 
 For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
@@ -12,9 +11,8 @@ import logging
 
 from homeassistant.components.weather import WeatherEntity
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import CONF_NAME, TEMP_CELSIUS
+from homeassistant.const import CONF_NAME, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
 
 from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
 from .const import (
@@ -98,7 +96,7 @@ class GismeteoWeather(GismeteoEntity, WeatherEntity):
     @property
     def temperature_unit(self):
         """Return the unit of measurement."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def pressure(self):

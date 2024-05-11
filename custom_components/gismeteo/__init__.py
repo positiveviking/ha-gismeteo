@@ -1,8 +1,7 @@
-#  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2024, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
-"""
-The Gismeteo component.
+"""The Gismeteo component.
 
 For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
@@ -10,12 +9,11 @@ https://github.com/Limych/ha-gismeteo/
 
 import asyncio
 import logging
-from typing import List, Optional
 
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
 from aiohttp import ClientConnectorError
 from async_timeout import timeout
+import voluptuous as vol
+
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
     CONF_API_KEY,
@@ -29,6 +27,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -39,7 +38,6 @@ from .const import (
     CONF_FORECAST,
     CONF_FORECAST_DAYS,
     CONF_PLATFORM_FORMAT,
-    CONF_WEATHER,
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
@@ -51,7 +49,6 @@ from .const import (
     STARTUP_MESSAGE,
     UNDO_UPDATE_LISTENER,
     UPDATE_INTERVAL,
-    WEATHER,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -81,7 +78,6 @@ LOCATION_SCHEMA = vol.Schema(
         vol.Optional(CONF_API_KEY): cv.string,
         vol.Optional(CONF_LATITUDE): cv.latitude,
         vol.Optional(CONF_LONGITUDE): cv.longitude,
-        vol.Optional(CONF_WEATHER): WEATHER_SCHEMA,
         vol.Optional(CONF_SENSORS): SENSORS_SCHEMA,
         vol.Optional(CONF_CACHE_DIR): cv.string,
     }
@@ -122,7 +118,6 @@ def _get_api_client(hass: HomeAssistant, config: ConfigType) -> GismeteoApiClien
         async_get_clientsession(hass),
         latitude=config.get(CONF_LATITUDE, hass.config.latitude),
         longitude=config.get(CONF_LONGITUDE, hass.config.longitude),
-        mode=config.get(CONF_MODE, FORECAST_MODE_HOURLY),
         params={
             "domain": DOMAIN,
             "timezone": str(hass.config.time_zone),
@@ -150,11 +145,6 @@ def _convert_yaml_config(config: ConfigType) -> ConfigType:
     """Convert YAML config to EntryFlow config."""
     cfg = config.copy()
 
-    if CONF_WEATHER in cfg:
-        cfg.update(cfg[CONF_WEATHER])
-        cfg.pop(CONF_WEATHER)
-        cfg[CONF_PLATFORM_FORMAT.format(WEATHER)] = True
-
     if CONF_SENSORS in cfg:
         cfg.update(cfg[CONF_SENSORS])
         cfg.pop(CONF_SENSORS)
@@ -163,7 +153,7 @@ def _convert_yaml_config(config: ConfigType) -> ConfigType:
     return cfg
 
 
-def _get_platforms(config: ConfigType) -> List[str]:
+def _get_platforms(config: ConfigType) -> list[str]:
     """Get configured platforms."""
     return [x for x in PLATFORMS if config.get(CONF_PLATFORM_FORMAT.format(x), True)]
 
@@ -240,7 +230,7 @@ class GismeteoDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Gismeteo data API."""
 
     def __init__(
-        self, hass: HomeAssistant, unique_id: Optional[str], gismeteo: GismeteoApiClient
+        self, hass: HomeAssistant, unique_id: str | None, gismeteo: GismeteoApiClient
     ):
         """Initialize."""
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)

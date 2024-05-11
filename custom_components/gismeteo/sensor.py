@@ -1,15 +1,14 @@
-#  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2024, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
-"""
-The Gismeteo component.
+"""The Gismeteo component.
 
 For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import (
@@ -40,7 +39,7 @@ from .entity import GismeteoEntity
 _LOGGER = logging.getLogger(__name__)
 
 
-def _fix_kinds(kinds: List[str], warn=True) -> List[str]:
+def _fix_kinds(kinds: list[str], warn=True) -> list[str]:
     """Remove unwanted values from kinds."""
     kinds = set(kinds)
 
@@ -75,18 +74,12 @@ def _gen_entities(
 
     for kind in kinds:
         entities.append(GismeteoSensor(location_name, kind, coordinator))
-        if kind == "pressure":
-            entities.append(GismeteoSensor(location_name, "pressure_mmhg", coordinator))
 
     days = config.get(CONF_FORECAST_DAYS)
     if days is not None:
         for day in range(days + 1):
             for kind in kinds:
                 entities.append(GismeteoSensor(location_name, kind, coordinator, day))
-                if kind == "pressure":
-                    entities.append(
-                        GismeteoSensor(location_name, "pressure_mmhg", coordinator, day)
-                    )
 
     return entities
 
@@ -133,7 +126,7 @@ class GismeteoSensor(GismeteoEntity):
         location_name: str,
         kind: str,
         coordinator: GismeteoDataUpdateCoordinator,
-        day: Optional[int] = None,
+        day: int | None = None,
     ):
         """Initialize the sensor."""
         super().__init__(location_name, coordinator)
@@ -169,22 +162,22 @@ class GismeteoSensor(GismeteoEntity):
             return None
 
     @property
-    def unit_of_measurement(self) -> Optional[str]:
+    def unit_of_measurement(self) -> str | None:
         """Return the unit of measurement of this entity, if any."""
         return SENSOR_TYPES[self._kind].get(ATTR_UNIT_OF_MEASUREMENT)
 
     @property
-    def icon(self) -> Optional[str]:
+    def icon(self) -> str | None:
         """Return the icon to use in the frontend, if any."""
         return SENSOR_TYPES[self._kind].get(ATTR_ICON)
 
     @property
-    def device_class(self) -> Optional[str]:
+    def device_class(self) -> str | None:
         """Return the device_class."""
         return SENSOR_TYPES[self._kind].get(ATTR_DEVICE_CLASS)
 
     @property
-    def device_state_attributes(self) -> Optional[Dict[str, Any]]:
+    def device_state_attributes(self) -> dict[str, Any] | None:
         """Return the state attributes."""
         attrs = self._gismeteo.attributes.copy()
         attrs[ATTR_ATTRIBUTION] = ATTRIBUTION

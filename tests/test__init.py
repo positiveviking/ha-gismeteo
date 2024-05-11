@@ -1,24 +1,19 @@
 """Tests for GisMeteo integration."""
+
 # pylint: disable=redefined-outer-name
-from typing import Optional
 from unittest.mock import patch
 
+from pytest_homeassistant_custom_component.common import MockConfigEntry, load_fixture
+
+from custom_components.gismeteo import _convert_yaml_config, deslugify
+from custom_components.gismeteo.api import ApiError, GismeteoApiClient
+from custom_components.gismeteo.const import CONF_PLATFORM_FORMAT, DOMAIN, DOMAIN_YAML
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry, ConfigEntryState
 from homeassistant.const import CONF_SENSORS
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import MockConfigEntry, load_fixture
-
-from custom_components.gismeteo import _convert_yaml_config, deslugify
-from custom_components.gismeteo.api import ApiError, GismeteoApiClient
-from custom_components.gismeteo.const import (
-    CONF_PLATFORM_FORMAT,
-    CONF_WEATHER,
-    DOMAIN,
-    DOMAIN_YAML,
-)
 
 from .const import (
     FAKE_CONFIG,
@@ -38,7 +33,7 @@ async def test_deslugify():
 
 async def async_init_integration(
     hass: HomeAssistant,
-    config_entry: Optional[ConfigEntry] = None,
+    config_entry: ConfigEntry | None = None,
 ) -> MockConfigEntry:
     """Set up the Gismeteo integration in Home Assistant."""
     if config_entry is None:
@@ -76,17 +71,8 @@ async def test_async_setup_yaml(hass: HomeAssistant):
 
 def test__convert_yaml_config():
     """Test convert YAML config to EntryFlow config."""
-    assert _convert_yaml_config({}) == {}
+    assert not _convert_yaml_config({})
     assert _convert_yaml_config({"qwe": "asd"}) == {"qwe": "asd"}
-
-    cfg = {
-        CONF_WEATHER: {"asd": "zxc"},
-    }
-    expected = {
-        "asd": "zxc",
-        CONF_PLATFORM_FORMAT.format(WEATHER_DOMAIN): True,
-    }
-    assert _convert_yaml_config(cfg) == expected
 
     cfg = {
         CONF_SENSORS: {"zxc": "qwe"},

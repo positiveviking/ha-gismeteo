@@ -68,7 +68,6 @@ for today and 2 days forward.
 # Example configuration.yaml entry
 gismeteo:
   sweet_home:
-    weather: {}
     sensors:
       monitored_conditions:
         - temperature
@@ -114,22 +113,17 @@ I put a lot of work into making this repo and component available and updated to
 >   _(float) (Optional) (Default: coordinates from the Home Assistant configuration)_\
 >   Longitude coordinate to monitor weather of (required if `latitude` is specified).
 >
-> **weather:**\
->   _(string) (Optional) (Default: `hourly`)_\
->   Can specify `hourly` or `daily`.\
->   Select `hourly` for a three-hour forecast for 24h, `daily` for daily forecast for a week.
->
-> > **mode:**\
-> >   _(string) (Optional) (Default: `hourly`)_\
-> >   Can specify `hourly` or `daily`.\
-> >   Select `hourly` for a three-hour forecast for 24h, `daily` for daily forecast for a week.
->
 > **sensors:**\
->   _(list) (Required)_\
->   Conditions to display in the frontend.
+>   _(list) (Optional)_\
+>   Setup for list of forecast sensors to display in the frontend.
 >
+> > **forecast_days:**\
+> >   _(positive int) (Optional) (Default: do not create any sensors)_\
+> >   How many days ahead to make forecast sensors.\
+> >   **Note:** If you only need a forecast sensors for today, specify `0`.
+> >
 > > **monitored_conditions:**\
-> >   _(list) (**Required**)_\
+> >   _(list) (Optional) (Default: None)_\
 > >   Conditions to display in the frontend.
 > >
 > > > **condition**\
@@ -194,11 +188,6 @@ I put a lot of work into making this repo and component available and updated to
 > > >   6–7 = High\
 > > >   8–10 = Very high\
 > > >   11+ = Extreme
-> >
-> > **forecast_days:**\
-> >   _(positive int) (Optional) (Default: do not create any forecast sensors)_\
-> >   How many days ahead to make forecast sensors.\
-> >   If you only need a forecast sensors for today, specify `0`.
 
 ## Track updates
 

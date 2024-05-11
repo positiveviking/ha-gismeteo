@@ -1,13 +1,12 @@
 # pylint: disable=protected-access,redefined-outer-name
 """Tests for Gismeteo integration."""
-
-from asynctest import Mock
-from homeassistant.const import TEMP_CELSIUS
-from homeassistant.core import HomeAssistant
+from unittest.mock import Mock
 
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
 from custom_components.gismeteo.const import ATTRIBUTION
 from custom_components.gismeteo.weather import GismeteoWeather
+from homeassistant.const import UnitOfTemperature
+from homeassistant.core import HomeAssistant
 
 from tests.const import FAKE_UNIQUE_ID
 
@@ -25,4 +24,4 @@ async def test_entity_initialization(hass: HomeAssistant):
     assert entity.unique_id == FAKE_UNIQUE_ID
     assert entity.attribution == ATTRIBUTION
     assert entity.condition == "asd"
-    assert entity.temperature_unit == TEMP_CELSIUS
+    assert entity.temperature_unit == UnitOfTemperature.CELSIUS

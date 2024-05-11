@@ -1,23 +1,23 @@
-#  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2024, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
-"""
-The Gismeteo component.
+"""The Gismeteo component.
 
 For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
+from collections.abc import Callable
+from datetime import datetime, timedelta
+from http import HTTPStatus
 import logging
 import math
-import time
-from http import HTTPStatus
+from typing import Any
 import xml.etree.ElementTree as etree  # type: ignore
-from datetime import datetime
-from typing import Any, Callable, Optional
 
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
+
 from homeassistant.components.weather import (
     ATTR_CONDITION_CLEAR_NIGHT,
     ATTR_CONDITION_CLOUDY,
@@ -45,14 +45,8 @@ from homeassistant.components.weather import (
     ATTR_WEATHER_WIND_BEARING,
     ATTR_WEATHER_WIND_SPEED,
 )
-from homeassistant.const import (
-    ATTR_ID,
-    ATTR_LATITUDE,
-    ATTR_LONGITUDE,
-    STATE_UNKNOWN,
-)
-from homeassistant.util import Throttle
-from homeassistant.util import dt as dt_util
+from homeassistant.const import ATTR_ID, ATTR_LATITUDE, ATTR_LONGITUDE, STATE_UNKNOWN
+from homeassistant.util import Throttle, dt as dt_util
 
 from .cache import Cache
 from .const import (
@@ -116,48 +110,43 @@ class GismeteoApiClient:
     def __init__(
         self,
         session: ClientSession,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-        location_key: Optional[int] = None,
-        mode=FORECAST_MODE_HOURLY,
-        params: Optional[dict] = None,
+        location_key: int | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        params: dict | None = None,
     ):
         """Initialize."""
         params = params or {}
 
-        if not location_key:
-            if not self._valid_coordinates(latitude, longitude):
-                raise InvalidCoordinatesError("Your coordinates are invalid.")
-
-            _LOGGER.debug("Place coordinates: %s, %s", latitude, longitude)
-
-        _LOGGER.debug("Forecast mode: %s", mode)
-
         self._session = session
-        self._mode = mode
         self._cache = Cache(params) if params.get("cache_dir") is not None else None
-        self._latitude = latitude
-        self._longitude = longitude
-        self._attributes = {
-            ATTR_ID: location_key,
-        }
+        self._attributes = {}
+
+        if location_key is not None:
+            _LOGGER.debug("Place location ID: %s", location_key)
+            self._attributes = {
+                ATTR_ID: location_key,
+            }
+        elif self._valid_coordinates(latitude, longitude):
+            _LOGGER.debug("Place coordinates: %s, %s", latitude, longitude)
+            self._attributes = {
+                ATTR_LATITUDE: latitude,
+                ATTR_LONGITUDE: longitude,
+            }
+        else:
+            raise InvalidCoordinatesError("Your coordinates are invalid.")
 
         self._current = {}
         self._forecast_hourly = []
         self._forecast_daily = []
-        self._timezone = (
-            dt_util.get_time_zone(params.get("timezone"))
-            if params.get("timezone") is not None
-            else dt_util.DEFAULT_TIME_ZONE
-        )
         self._parsed = {}
 
     @staticmethod
     def _valid_coordinates(latitude: float, longitude: float) -> bool:
         """Return True if coordinates are valid."""
         try:
-            assert isinstance(latitude, (int, float)) and isinstance(
-                longitude, (int, float)
+            assert isinstance(latitude, int | float) and isinstance(
+                longitude, int | float
             )
             assert abs(latitude) <= 90 and abs(longitude) <= 180
         except (AssertionError, TypeError):
@@ -174,13 +163,13 @@ class GismeteoApiClient:
         """Return current weather data."""
         return self._current
 
-    def forecast_data(self, pos: int):
+    def forecast_data(self, pos: int, mode: str = FORECAST_MODE_HOURLY):
         """Return forecast data."""
         forecast = []
-        now = int(time.time())
+        now = dt_util.now()
         for data in (
             self._forecast_hourly
-            if self._mode == FORECAST_MODE_HOURLY
+            if mode == FORECAST_MODE_HOURLY
             else self._forecast_daily
         ):
             fc_time = data.get(ATTR_FORECAST_TIME)
@@ -199,7 +188,7 @@ class GismeteoApiClient:
             return {}
 
     async def _async_get_data(
-        self, url: str, cache_fname: Optional[str] = None, as_browser: bool = False
+        self, url: str, cache_fname: str | None = None, as_browser: bool = False
     ) -> str:
         """Retreive data from Gismeteo API and cache results."""
         _LOGGER.debug("Requesting URL %s", url)
@@ -229,9 +218,9 @@ class GismeteoApiClient:
         """Retreive location data from Gismeteo."""
         url = (
             ENDPOINT_URL
-            + f"/cities/?lat={self._latitude}&lng={self._longitude}&count=1&lang=en"
+            + f"/cities/?lat={self._attributes[ATTR_LATITUDE]}&lng={self._attributes[ATTR_LONGITUDE]}&count=1&lang=en"
         )
-        cache_fname = f"location_{self._latitude}_{self._longitude}"
+        cache_fname = f"location_{self._attributes[ATTR_LATITUDE]}_{self._attributes[ATTR_LONGITUDE]}"
 
         response = await self._async_get_data(url, cache_fname)
         try:
@@ -250,7 +239,7 @@ class GismeteoApiClient:
 
     async def async_get_forecast(self):
         """Get the latest forecast data from Gismeteo."""
-        if self.attributes[ATTR_ID] is None:
+        if ATTR_ID not in self.attributes:
             await self.async_update_location()
 
         url = f"{ENDPOINT_URL}/forecast/?city={self.attributes[ATTR_ID]}&lang=en"
@@ -279,7 +268,7 @@ class GismeteoApiClient:
                 data_div = parser.find("div", {"data-widget-id": key})
                 for item in data_div.find_all("div", {"class": "widget__item"}):
                     day = int(item.attrs["data-item"])
-                    date = today + 86400 * day
+                    date = today + timedelta(days=day)
                     value = item.find("div", {"class": "widget__value"})
                     if value:
                         data.setdefault(date, {})
@@ -291,7 +280,7 @@ class GismeteoApiClient:
             return {}
 
     @staticmethod
-    def _get(var: dict, ind: str, func: Optional[Callable] = None) -> Any:
+    def _get(var: dict, ind: str, func: Callable | None = None) -> Any:
         res = var.get(ind)
         if func is not None:
             try:
@@ -301,11 +290,11 @@ class GismeteoApiClient:
         return res
 
     @staticmethod
-    def _is_day(testing_time, sunrise_time, sunset_time):
+    def _is_day(testing_time: datetime, sunrise_time: datetime, sunset_time: datetime):
         """Return True if sun are shining."""
         return sunrise_time < testing_time < sunset_time
 
-    def condition(self, src=None):
+    def condition(self, src=None, mode: str = FORECAST_MODE_HOURLY):
         """Return the condition summary."""
         src = src or self._current
 
@@ -313,8 +302,8 @@ class GismeteoApiClient:
         if cld is None:
             return None
         if cld == 0:
-            if self._mode == FORECAST_MODE_DAILY or self._is_day(
-                src.get(ATTR_FORECAST_TIME, time.time()),
+            if mode == FORECAST_MODE_DAILY or self._is_day(
+                src.get(ATTR_FORECAST_TIME, dt_util.now()),
                 src.get(ATTR_SUNRISE),
                 src.get(ATTR_SUNSET),
             ):
@@ -381,12 +370,6 @@ class GismeteoApiClient:
         src = src or self._current
         temperature = src.get(ATTR_WEATHER_WATER_TEMPERATURE)
         return float(temperature) if temperature is not None else STATE_UNKNOWN
-
-    def pressure_mmhg(self, src=None):
-        """Return the pressure in mmHg."""
-        src = src or self._current
-        pressure = src.get(ATTR_WEATHER_PRESSURE)
-        return float(pressure) if pressure is not None else STATE_UNKNOWN
 
     def pressure(self, src=None):
         """Return the pressure in hPa."""
@@ -468,24 +451,23 @@ class GismeteoApiClient:
 
     def allergy_birch(self, src=None):
         """Return allergy birch value."""
-        src = src or self.forecast_data(0)
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
         allergy = src.get(ATTR_WEATHER_ALLERGY_BIRCH)
         return allergy if allergy is not None else STATE_UNKNOWN
 
     def uv_index(self, src=None):
         """Return UV index."""
-        src = src or self.forecast_data(0)
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
         uv_index = src.get(ATTR_WEATHER_UV_INDEX)
         return uv_index if uv_index is not None else STATE_UNKNOWN
 
-    def forecast(self):
+    def forecast(self, mode: str = FORECAST_MODE_HOURLY):
         """Return the forecast array."""
+        now = dt_util.now()
         forecast = []
-        now = int(time.time())
-        dt_util.set_default_time_zone(self._timezone)
         for i in (
             self._forecast_hourly
-            if self._mode == FORECAST_MODE_HOURLY
+            if mode == FORECAST_MODE_HOURLY
             else self._forecast_daily
         ):
             fc_time = i.get(ATTR_FORECAST_TIME)
@@ -493,10 +475,8 @@ class GismeteoApiClient:
                 continue  # pragma: no cover
 
             data = {
-                ATTR_FORECAST_TIME: dt_util.as_local(
-                    datetime.utcfromtimestamp(fc_time)
-                ).isoformat(),
-                ATTR_FORECAST_CONDITION: self.condition(i),
+                ATTR_FORECAST_TIME: fc_time,
+                ATTR_FORECAST_CONDITION: self.condition(i, mode),
                 ATTR_FORECAST_TEMP: self.temperature(i),
                 ATTR_FORECAST_PRESSURE: self.pressure(i),
                 ATTR_FORECAST_HUMIDITY: self.humidity(i),
@@ -506,7 +486,7 @@ class GismeteoApiClient:
             }
 
             if (
-                self._mode == FORECAST_MODE_DAILY
+                mode == FORECAST_MODE_DAILY
                 and i.get(ATTR_FORECAST_TEMP_LOW) is not None
             ):
                 data[ATTR_FORECAST_TEMP_LOW] = i.get(ATTR_FORECAST_TEMP_LOW)
@@ -519,13 +499,17 @@ class GismeteoApiClient:
         return forecast
 
     @staticmethod
-    def _get_utime(source, tzone):
+    def _get_utime(source: str, tzone: int) -> datetime:
+        """Get local datetime for given datetime as string.
+
+        :raise ValueError
+        """
         local_date = source
         if len(source) <= 10:
             local_date += "T00:00:00"
         tz_h, tz_m = divmod(abs(tzone), 60)
         local_date += f"+{tz_h:02}:{tz_m:02}" if tzone >= 0 else f"-{tz_h:02}:{tz_m:02}"
-        return int(dt_util.as_timestamp(local_date))
+        return dt_util.parse_datetime(local_date, raise_on_error=True)
 
     @Throttle(PARSED_UPDATE_INTERVAL)
     async def async_update_parsed(self):
@@ -537,15 +521,20 @@ class GismeteoApiClient:
         response = await self.async_get_forecast()
         try:
             xml = etree.fromstring(response)
-            tzone = int(xml.find("location").get("tzone"))
             current = xml.find("location/fact")
             current_v = current.find("values")
+            tzone = int(xml.find("location").get("tzone"))
+            today = self._get_utime(current.get("valid"), tzone)
 
             await self.async_update_parsed()
 
             self._current = {
-                ATTR_SUNRISE: self._get(current, "sunrise", int),
-                ATTR_SUNSET: self._get(current, "sunset", int),
+                ATTR_SUNRISE: datetime.fromtimestamp(
+                    self._get(current, "sunrise", int), today.tzinfo
+                ),
+                ATTR_SUNSET: datetime.fromtimestamp(
+                    self._get(current, "sunset", int), today.tzinfo
+                ),
                 ATTR_WEATHER_CONDITION: self._get(current_v, "descr"),
                 ATTR_WEATHER_TEMPERATURE: self._get(current_v, "tflt", float),
                 ATTR_WEATHER_PRESSURE: self._get(current_v, "p", int),
@@ -565,8 +554,12 @@ class GismeteoApiClient:
             # Update hourly forecast
             self._forecast_hourly = []
             for day in xml.findall("location/day"):
-                sunrise = self._get(day, "sunrise", int)
-                sunset = self._get(day, "sunset", int)
+                sunrise = datetime.fromtimestamp(
+                    self._get(day, "sunrise", int), today.tzinfo
+                )
+                sunset = datetime.fromtimestamp(
+                    self._get(day, "sunset", int), today.tzinfo
+                )
 
                 for i in day.findall("forecast"):
                     fc_v = i.find("values")

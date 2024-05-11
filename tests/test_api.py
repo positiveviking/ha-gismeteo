@@ -1,14 +1,12 @@
 # pylint: disable=protected-access,redefined-outer-name
 """Tests for Gismeteo integration."""
-from typing import Any, Optional
-from unittest.mock import patch
+from datetime import datetime
+from http import HTTPStatus
+from typing import Any
+from unittest.mock import AsyncMock, patch
 
-import pytest
 from aiohttp import ClientSession
-from asynctest import CoroutineMock
-from homeassistant.components.weather import ATTR_WEATHER_WIND_SPEED
-from homeassistant.const import ATTR_ID, HTTPStatus.OK, STATE_UNKNOWN
-from homeassistant.util import dt as dt_util
+import pytest
 from pytest import raises
 from pytest_homeassistant_custom_component.common import load_fixture
 
@@ -25,21 +23,25 @@ from custom_components.gismeteo.const import (
     ATTR_WEATHER_STORM,
     CONDITION_FOG_CLASSES,
     FORECAST_MODE_DAILY,
-    FORECAST_MODE_HOURLY,
 )
+from homeassistant.components.weather import ATTR_WEATHER_WIND_SPEED
+from homeassistant.const import ATTR_ID, STATE_UNKNOWN
+from homeassistant.util import dt as dt_util
 
 LATITUDE = 52.0677904
 LONGITUDE = 19.4795644
 LOCATION_KEY = 3546
 
 MOCK_NOW = dt_util.parse_datetime("2021-02-21T16:16:00+03:00")
+TZ180 = dt_util.get_time_zone("Europe/Moscow")
 
 
 @pytest.fixture(autouse=True)
 def patch_time():
     """Patch time functions."""
-    with patch.object(dt_util, "now", return_value=MOCK_NOW), patch(
-        "time.time", return_value=MOCK_NOW.timestamp()
+    with (
+        patch.object(dt_util, "now", return_value=MOCK_NOW),
+        patch("time.time", return_value=MOCK_NOW.timestamp()),
     ):
         yield
 
@@ -83,9 +85,7 @@ async def test__get():
 async def test__async_get_data(mock_get):
     """Test with valid location data."""
     mock_get.return_value.__aenter__.return_value.status = HTTPStatus.OK
-    mock_get.return_value.__aenter__.return_value.text = CoroutineMock(
-        return_value="qwe"
-    )
+    mock_get.return_value.__aenter__.return_value.text = AsyncMock(return_value="qwe")
     #
     async with ClientSession() as client:
         gismeteo = GismeteoApiClient(client, latitude=LATITUDE, longitude=LONGITUDE)
@@ -111,7 +111,7 @@ async def test_async_get_location():
         async with ClientSession() as client:
             gismeteo = GismeteoApiClient(client, latitude=LATITUDE, longitude=LONGITUDE)
 
-            assert gismeteo.attributes[ATTR_ID] is None
+            assert ATTR_ID not in gismeteo.attributes
 
             await gismeteo.async_update_location()
 
@@ -138,6 +138,25 @@ async def test_async_get_location():
                 await gismeteo.async_update_location()
 
 
+def test__get_utime():
+    """Test _get_utime service method."""
+    assert GismeteoApiClient._get_utime("2021-02-21T16:00:00", 180) == datetime(
+        2021, 2, 21, 16, 0, tzinfo=TZ180
+    )
+    assert GismeteoApiClient._get_utime("2021-02-21T16:00:00", 0) == datetime(
+        2021, 2, 21, 16, 0, tzinfo=dt_util.UTC
+    )
+    assert GismeteoApiClient._get_utime("2021-02-21", 180) == datetime(
+        2021, 2, 21, tzinfo=TZ180
+    )
+    assert GismeteoApiClient._get_utime("2021-02-21", 0) == datetime(
+        2021, 2, 21, tzinfo=dt_util.UTC
+    )
+
+    with raises(ValueError):
+        GismeteoApiClient._get_utime("2021-02-", 0)
+
+
 async def test_async_get_parsed_data(gismeteo_api):
     """Test parse data from Gismeteo main site."""
     async with ClientSession() as client:
@@ -146,35 +165,23 @@ async def test_async_get_parsed_data(gismeteo_api):
         data = await gismeteo.async_get_parsed()
 
         expected_data = {
-            1613854800: {"allergy": 2, "uvb": 2},
-            1613941200: {"allergy": 0, "uvb": 4},
-            1614027600: {"allergy": 0, "uvb": 4},
-            1614114000: {"allergy": 2, "uvb": 4},
-            1614200400: {"allergy": 1, "uvb": 2},
-            1614286800: {"allergy": 0, "uvb": 2},
-            1614373200: {"allergy": 11, "uvb": 1},
-            1614459600: {"allergy": 22, "uvb": 3},
-            1614546000: {"allergy": 11, "uvb": 4},
-            1614632400: {"allergy": 206, "uvb": 4},
+            datetime(2021, 2, 21, tzinfo=TZ180): {"allergy": 2, "uvb": 2},
+            datetime(2021, 2, 22, tzinfo=TZ180): {"allergy": 0, "uvb": 4},
+            datetime(2021, 2, 23, tzinfo=TZ180): {"allergy": 0, "uvb": 4},
+            datetime(2021, 2, 24, tzinfo=TZ180): {"allergy": 2, "uvb": 4},
+            datetime(2021, 2, 25, tzinfo=TZ180): {"allergy": 1, "uvb": 2},
+            datetime(2021, 2, 26, tzinfo=TZ180): {"allergy": 0, "uvb": 2},
+            datetime(2021, 2, 27, tzinfo=TZ180): {"allergy": 11, "uvb": 1},
+            datetime(2021, 2, 28, tzinfo=TZ180): {"allergy": 22, "uvb": 3},
+            datetime(2021, 3, 1, tzinfo=TZ180): {"allergy": 11, "uvb": 4},
+            datetime(2021, 3, 2, tzinfo=TZ180): {"allergy": 206, "uvb": 4},
         }
 
         assert data == expected_data
 
 
-def test__get_utime():
-    """Test _get_utime service method."""
-    assert GismeteoApiClient._get_utime("2021-02-21T16:00:00", 180) == 1613912400
-    assert GismeteoApiClient._get_utime("2021-02-21T16:00:00", 0) == 1613923200
-    assert GismeteoApiClient._get_utime("2021-02-21", 180) == 1613854800
-    assert GismeteoApiClient._get_utime("2021-02-21", 0) == 1613865600
-
-    with raises(ValueError):
-        GismeteoApiClient._get_utime("2021-02-", 0)
-
-
 async def init_gismeteo(
-    mode=FORECAST_MODE_HOURLY,
-    location_key: Optional[int] = LOCATION_KEY,
+    location_key: int | None = LOCATION_KEY,
     data: Any = False,
 ):
     """Prepare Gismeteo object."""
@@ -194,23 +201,22 @@ async def init_gismeteo(
                 latitude=LATITUDE,
                 longitude=LONGITUDE,
                 location_key=location_key,
-                mode=mode,
                 params={
                     "timezone": "UTC",
                 },
             )
 
-            assert gismeteo.current_data == {}
-            assert gismeteo.forecast_data(0) == {}
+            assert not gismeteo.current_data
+            assert not gismeteo.forecast_data(0)
 
             if location_key is None or data is not False:
                 assert await gismeteo.async_update() is False
-                assert gismeteo.current_data == {}
-                assert gismeteo.forecast_data(0) == {}
+                assert not gismeteo.current_data
+                assert not gismeteo.forecast_data(0)
             else:
                 assert await gismeteo.async_update() is True
-                assert gismeteo.current_data != {}
-                assert gismeteo.forecast_data(0) != {}
+                assert gismeteo.current_data
+                assert gismeteo.forecast_data(0)
 
     return gismeteo
 
@@ -220,8 +226,8 @@ async def test_api_init():
     gismeteo = await init_gismeteo()
 
     expected_current = {
-        "sunrise": 1613893140,
-        "sunset": 1613929620,
+        "sunrise": datetime(2021, 2, 21, 10, 39, tzinfo=TZ180),
+        "sunset": datetime(2021, 2, 21, 20, 47, tzinfo=TZ180),
         "condition": "Mainly cloudy, light snow",
         "temperature": -7.0,
         "pressure": 746,
@@ -238,9 +244,9 @@ async def test_api_init():
         "water_temperature": 3.0,
     }
     expected_forecast = {
-        "datetime": 1613908800,
-        "sunrise": 1613893140,
-        "sunset": 1613929620,
+        "datetime": datetime(2021, 2, 21, 15, 0, tzinfo=TZ180),
+        "sunrise": datetime(2021, 2, 21, 10, 39, tzinfo=TZ180),
+        "sunset": datetime(2021, 2, 21, 20, 47, tzinfo=TZ180),
         "condition": "Mainly cloudy, very heavy snow",
         "cloudiness": 3,
         "humidity": 86,
@@ -396,17 +402,6 @@ async def test_water_temperature():
     assert gismeteo.water_temperature(gismeteo.forecast_data(3)) == STATE_UNKNOWN
 
 
-async def test_pressure_mmhg():
-    """Test pressure in mmHg."""
-    gismeteo = await init_gismeteo()
-
-    assert gismeteo.pressure_mmhg() == 746.0
-    assert gismeteo.pressure_mmhg(gismeteo.current_data) == 746.0
-
-    assert gismeteo.pressure_mmhg(gismeteo.forecast_data(0)) == 746.0
-    assert gismeteo.pressure_mmhg(gismeteo.forecast_data(3)) == 749.0
-
-
 async def test_pressure():
     """Test pressure in hPa."""
     gismeteo = await init_gismeteo()
@@ -530,37 +525,43 @@ async def test_geomagnetic():
 
 async def test_allergy_birch():
     """Test allergy birch value."""
-    gismeteo_d = await init_gismeteo(mode=FORECAST_MODE_DAILY)
+    gismeteo_d = await init_gismeteo()
 
     assert gismeteo_d.allergy_birch() == 2
-    assert gismeteo_d.allergy_birch(gismeteo_d.forecast_data(0)) == 2
+    assert (
+        gismeteo_d.allergy_birch(gismeteo_d.forecast_data(0, FORECAST_MODE_DAILY)) == 2
+    )
 
-    assert gismeteo_d.allergy_birch(gismeteo_d.forecast_data(1)) == 0
-    assert gismeteo_d.allergy_birch(gismeteo_d.forecast_data(6)) == 11
+    assert (
+        gismeteo_d.allergy_birch(gismeteo_d.forecast_data(1, FORECAST_MODE_DAILY)) == 0
+    )
+    assert (
+        gismeteo_d.allergy_birch(gismeteo_d.forecast_data(6, FORECAST_MODE_DAILY)) == 11
+    )
 
 
 async def test_uv_index():
     """Test UV index."""
-    gismeteo_d = await init_gismeteo(mode=FORECAST_MODE_DAILY)
+    gismeteo_d = await init_gismeteo()
 
     assert gismeteo_d.uv_index() == 2
-    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(0)) == 2
+    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(0, FORECAST_MODE_DAILY)) == 2
 
-    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(1)) == 4
-    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(6)) == 1
+    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(1, FORECAST_MODE_DAILY)) == 4
+    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(6, FORECAST_MODE_DAILY)) == 1
 
 
 async def test_forecast():
     """Test forecast."""
     with patch(
-        "time.time",
-        return_value=GismeteoApiClient._get_utime("2021-02-26", 0),
+        "homeassistant.util.dt.now",
+        return_value=datetime(2021, 2, 26, tzinfo=dt_util.UTC),
     ):
-        gismeteo_d = await init_gismeteo(FORECAST_MODE_DAILY)
+        gismeteo_d = await init_gismeteo()
 
-        assert gismeteo_d.forecast() == [
+        assert gismeteo_d.forecast(FORECAST_MODE_DAILY) == [
             {
-                "datetime": "2021-02-25T21:00:00+00:00",
+                "datetime": datetime(2021, 2, 26, tzinfo=TZ180),
                 "condition": "rainy",
                 "temperature": 4.0,
                 "pressure": 0.0,
@@ -571,7 +572,7 @@ async def test_forecast():
                 "templow": 2,
             },
             {
-                "datetime": "2021-02-26T21:00:00+00:00",
+                "datetime": datetime(2021, 2, 27, tzinfo=TZ180),
                 "condition": "cloudy",
                 "temperature": 2.0,
                 "pressure": 0.0,

@@ -1,20 +1,12 @@
 """Constants for tests."""
 
+from custom_components.gismeteo.const import CONF_PLATFORM_FORMAT, SENSOR, WEATHER
 from homeassistant.const import (
     CONF_LATITUDE,
     CONF_LONGITUDE,
-    CONF_MODE,
     CONF_MONITORED_CONDITIONS,
     CONF_NAME,
     CONF_SENSORS,
-)
-
-from custom_components.gismeteo.const import (
-    CONF_PLATFORM_FORMAT,
-    CONF_WEATHER,
-    FORECAST_MODE_HOURLY,
-    SENSOR,
-    WEATHER,
 )
 
 FAKE_NAME = "Home"
@@ -38,7 +30,6 @@ FAKE_CONFIG_YAML = {
         CONF_NAME: FAKE_NAME,
         CONF_LATITUDE: FAKE_LATITUDE,
         CONF_LONGITUDE: FAKE_LONGITUDE,
-        CONF_WEATHER: {CONF_MODE: FORECAST_MODE_HOURLY},
         CONF_SENSORS: {CONF_MONITORED_CONDITIONS: ["condition"]},
     },
 }
