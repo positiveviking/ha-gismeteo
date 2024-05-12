@@ -9,19 +9,11 @@ logger:
 # debugpy:
 
 gismeteo:
-  sweet_home:
-    weather: {}
-    sensors:
-      monitored_conditions:
-        - temperature
-        - humidity
+  sweet_home: {}
 
   dacha:
     name: Our Country House
     latitude: 46.0561601
     longitude: 13.1741225
     sensors:
-      monitored_conditions:
-        - temperature
-        - humidity
       forecast_days: 2

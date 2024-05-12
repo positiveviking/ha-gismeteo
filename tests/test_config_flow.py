@@ -4,18 +4,12 @@
 from unittest.mock import patch
 
 import pytest
-from homeassistant import config_entries, data_entry_flow
-from homeassistant.const import CONF_MODE, CONF_NAME, CONF_PLATFORM
-from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.gismeteo.const import (
-    DOMAIN,
-    FORECAST_MODE_DAILY,
-    PLATFORMS,
-    SENSOR,
-    WEATHER,
-)
+from custom_components.gismeteo.const import CONF_PLATFORM_FORMAT, DOMAIN
+from homeassistant import config_entries, data_entry_flow
+from homeassistant.const import CONF_NAME, Platform
+from homeassistant.core import HomeAssistant
 
 from .const import FAKE_CONFIG
 
@@ -26,9 +20,15 @@ from .const import FAKE_CONFIG
 @pytest.fixture(autouse=True)
 def bypass_setup_fixture():
     """Prevent setup."""
-    with patch("custom_components.gismeteo.async_setup", return_value=True,), patch(
-        "custom_components.gismeteo.async_setup_entry",
-        return_value=True,
+    with (
+        patch(
+            "custom_components.gismeteo.async_setup",
+            return_value=True,
+        ),
+        patch(
+            "custom_components.gismeteo.async_setup_entry",
+            return_value=True,
+        ),
     ):
         yield
 
@@ -98,15 +98,9 @@ async def test_options_flow(hass: HomeAssistant):
     assert result["step_id"] == "user"
 
     # Enter some fake data into the form
-    data = {f"{CONF_PLATFORM}_{x}": x != SENSOR for x in PLATFORMS}
-    data.update(
-        {
-            CONF_MODE: FORECAST_MODE_DAILY,
-        }
-    )
     result = await hass.config_entries.options.async_configure(
         result["flow_id"],
-        user_input=data,
+        user_input={CONF_PLATFORM_FORMAT.format(Platform.SENSOR): False},
     )
 
     # Verify that the flow finishes
@@ -115,9 +109,7 @@ async def test_options_flow(hass: HomeAssistant):
 
     # Verify that the options were updated
     assert entry.options == {
-        f"{CONF_PLATFORM}_{SENSOR}": False,
-        f"{CONF_PLATFORM}_{WEATHER}": True,
-        CONF_MODE: FORECAST_MODE_DAILY,
+        CONF_PLATFORM_FORMAT.format(Platform.SENSOR): False,
     }
 
 

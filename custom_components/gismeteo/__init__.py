@@ -7,7 +7,6 @@ For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
-import asyncio
 import logging
 
 from aiohttp import ClientConnectorError
@@ -19,10 +18,10 @@ from homeassistant.const import (
     CONF_API_KEY,
     CONF_LATITUDE,
     CONF_LONGITUDE,
-    CONF_MODE,
     CONF_MONITORED_CONDITIONS,
     CONF_NAME,
     CONF_SENSORS,
+    Platform,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -41,11 +40,7 @@ from .const import (
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
-    FORECAST_MODE_DAILY,
-    FORECAST_MODE_HOURLY,
     PLATFORMS,
-    SENSOR,
-    SENSOR_TYPES,
     STARTUP_MESSAGE,
     UNDO_UPDATE_LISTENER,
     UPDATE_INTERVAL,
@@ -54,20 +49,12 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-WEATHER_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_MODE, default=FORECAST_MODE_HOURLY): vol.In(
-            [FORECAST_MODE_HOURLY, FORECAST_MODE_DAILY]
-        ),
-    }
-)
+forecast_days_int = vol.All(vol.Coerce(int), vol.Range(min=0, max=6))
 
 SENSORS_SCHEMA = vol.Schema(
     {
-        vol.Optional(CONF_FORECAST_DAYS): cv.positive_int,
-        vol.Optional(CONF_MONITORED_CONDITIONS, default=[]): vol.All(
-            cv.ensure_list, [vol.In(SENSOR_TYPES)]
-        ),
+        vol.Optional(CONF_FORECAST_DAYS): forecast_days_int,
+        vol.Optional(CONF_MONITORED_CONDITIONS): cv.deprecated,
         vol.Optional(CONF_FORECAST): cv.deprecated,
     }
 )
@@ -148,82 +135,60 @@ def _convert_yaml_config(config: ConfigType) -> ConfigType:
     if CONF_SENSORS in cfg:
         cfg.update(cfg[CONF_SENSORS])
         cfg.pop(CONF_SENSORS)
-        cfg[CONF_PLATFORM_FORMAT.format(SENSOR)] = True
+        cfg[CONF_PLATFORM_FORMAT.format(Platform.SENSOR)] = True
 
     return cfg
 
 
-def _get_platforms(config: ConfigType) -> list[str]:
-    """Get configured platforms."""
-    return [x for x in PLATFORMS if config.get(CONF_PLATFORM_FORMAT.format(x), True)]
-
-
-async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Gismeteo as config entry."""
-    if config_entry.source == SOURCE_IMPORT:
+    if entry.source == SOURCE_IMPORT:
         # Setup from configuration.yaml
-        platforms = set()
-
         for uid, cfg in hass.data[DOMAIN_YAML].items():
             cfg = _convert_yaml_config(cfg)
-
-            platforms.update(_get_platforms(cfg))
 
             coordinator = await _async_get_coordinator(hass, uid, cfg)
             hass.data[DOMAIN][uid] = {
                 COORDINATOR: coordinator,
             }
 
-        undo_listener = config_entry.add_update_listener(update_listener)
-        hass.data[DOMAIN][config_entry.entry_id] = {
+        undo_listener = entry.add_update_listener(update_listener)
+        hass.data[DOMAIN][entry.entry_id] = {
             UNDO_UPDATE_LISTENER: undo_listener,
         }
-        platforms = list(platforms)
 
     else:
         # Setup from config entry
-        config = config_entry.data.copy()  # type: ConfigType
-        config.update(config_entry.options)
+        config = entry.data.copy()  # type: ConfigType
+        config.update(entry.options)
 
-        platforms = _get_platforms(config)
-
-        coordinator = await _async_get_coordinator(hass, config_entry.entry_id, config)
-        undo_listener = config_entry.add_update_listener(update_listener)
-        hass.data[DOMAIN][config_entry.entry_id] = {
+        coordinator = await _async_get_coordinator(hass, entry.entry_id, config)
+        undo_listener = entry.add_update_listener(update_listener)
+        hass.data[DOMAIN][entry.entry_id] = {
             COORDINATOR: coordinator,
             UNDO_UPDATE_LISTENER: undo_listener,
         }
 
-    for component in platforms:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(config_entry, component)
-        )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    unload_ok = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(config_entry, component)
-                for component in PLATFORMS
-            ]
-        )
-    )
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    hass.data[DOMAIN][config_entry.entry_id][UNDO_UPDATE_LISTENER]()
+    hass.data[DOMAIN][entry.entry_id][UNDO_UPDATE_LISTENER]()
 
     if unload_ok:
-        hass.data[DOMAIN].pop(config_entry.entry_id)
+        hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok
 
 
-async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry):
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
     """Update listener."""
-    await hass.config_entries.async_reload(config_entry.entry_id)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 class GismeteoDataUpdateCoordinator(DataUpdateCoordinator):

@@ -69,18 +69,12 @@ for today and 2 days forward.
 gismeteo:
   sweet_home:
     sensors:
-      monitored_conditions:
-        - temperature
-        - humidity
 
   dacha:
     name: Our Country House
     latitude: ...
     longitude: ...
     sensors:
-      monitored_conditions:
-        - temperature
-        - humidity
       forecast_days: 2
 ```
 
@@ -118,14 +112,11 @@ I put a lot of work into making this repo and component available and updated to
 >   Setup for list of forecast sensors to display in the frontend.
 >
 > > **forecast_days:**\
-> >   _(positive int) (Optional) (Default: do not create any sensors)_\
+> >   _(positive int; 0–6) (Optional) (Default: do not create any sensors)_\
 > >   How many days ahead to make forecast sensors.\
 > >   **Note:** If you only need a forecast sensors for today, specify `0`.
-> >
-> > **monitored_conditions:**\
-> >   _(list) (Optional) (Default: None)_\
-> >   Conditions to display in the frontend.
-> >
+
+
 > > > **condition**\
 > > >   A human-readable text summary.
 > > >

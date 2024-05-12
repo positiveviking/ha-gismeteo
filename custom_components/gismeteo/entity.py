@@ -1,8 +1,7 @@
 #  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
-"""
-The Gismeteo component.
+"""The Gismeteo component.
 
 For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
@@ -19,7 +18,7 @@ from .const import DOMAIN, NAME
 class GismeteoEntity(CoordinatorEntity):
     """Gismeteo entity."""
 
-    def __init__(self, location_name: str, coordinator: GismeteoDataUpdateCoordinator):
+    def __init__(self, coordinator: GismeteoDataUpdateCoordinator, location_name: str):
         """Class initialization."""
         super().__init__(coordinator)
         self._location_name = location_name

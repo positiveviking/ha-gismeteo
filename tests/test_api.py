@@ -101,8 +101,22 @@ async def test__async_get_data(mock_get):
             await gismeteo._async_get_data("some_url")
 
 
-async def test_async_get_location():
+async def test_async_update_location():
     """Test with valid location data."""
+    with patch.object(
+        GismeteoApiClient,
+        "_async_get_data",
+        return_value=load_fixture("location.xml"),
+    ):
+        async with ClientSession() as client:
+            gismeteo = GismeteoApiClient(client, latitude=0, longitude=0)
+
+            assert ATTR_ID not in gismeteo.attributes
+
+            await gismeteo.async_update_location()
+
+    assert ATTR_ID not in gismeteo.attributes
+
     with patch.object(
         GismeteoApiClient,
         "_async_get_data",
@@ -157,7 +171,34 @@ def test__get_utime():
         GismeteoApiClient._get_utime("2021-02-", 0)
 
 
-async def test_async_get_parsed_data(gismeteo_api):
+async def test_async_get_forecast():
+    """Test parse data from Gismeteo main site."""
+    with patch.object(
+        GismeteoApiClient,
+        "_async_get_data",
+        return_value="test data",
+    ):
+        async with ClientSession() as client:
+            gismeteo = GismeteoApiClient(client, latitude=0, longitude=0)
+
+            data = await gismeteo.async_get_forecast()
+
+    assert data == ""
+
+    with patch.object(
+        GismeteoApiClient,
+        "_async_get_data",
+        return_value="test data",
+    ):
+        async with ClientSession() as client:
+            gismeteo = GismeteoApiClient(client, location_key=LOCATION_KEY)
+
+            data = await gismeteo.async_get_forecast()
+
+    assert data == "test data"
+
+
+async def test_async_get_parsed(gismeteo_api):
     """Test parse data from Gismeteo main site."""
     async with ClientSession() as client:
         gismeteo = GismeteoApiClient(client, location_key=LOCATION_KEY)
@@ -165,16 +206,156 @@ async def test_async_get_parsed_data(gismeteo_api):
         data = await gismeteo.async_get_parsed()
 
         expected_data = {
-            datetime(2021, 2, 21, tzinfo=TZ180): {"allergy": 2, "uvb": 2},
-            datetime(2021, 2, 22, tzinfo=TZ180): {"allergy": 0, "uvb": 4},
-            datetime(2021, 2, 23, tzinfo=TZ180): {"allergy": 0, "uvb": 4},
-            datetime(2021, 2, 24, tzinfo=TZ180): {"allergy": 2, "uvb": 4},
-            datetime(2021, 2, 25, tzinfo=TZ180): {"allergy": 1, "uvb": 2},
-            datetime(2021, 2, 26, tzinfo=TZ180): {"allergy": 0, "uvb": 2},
-            datetime(2021, 2, 27, tzinfo=TZ180): {"allergy": 11, "uvb": 1},
-            datetime(2021, 2, 28, tzinfo=TZ180): {"allergy": 22, "uvb": 3},
-            datetime(2021, 3, 1, tzinfo=TZ180): {"allergy": 11, "uvb": 4},
-            datetime(2021, 3, 2, tzinfo=TZ180): {"allergy": 206, "uvb": 4},
+            datetime(2021, 2, 21, tzinfo=TZ180): {
+                "geomagnetic": "7",
+                "humidity": "61",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "2",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0,3",
+                "radiation": "2",
+                "roadcondition": "Сухая дорога",
+                "wind-direction": "С",
+                "wind-gust": "–",
+                "wind-speed": "27",
+            },
+            datetime(2021, 2, 22, tzinfo=TZ180): {
+                "geomagnetic": "6",
+                "humidity": "51",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "2",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "4",
+                "roadcondition": "Сухая дорога",
+                "wind-direction": "С",
+                "wind-gust": "414",
+                "wind-speed": "14",
+            },
+            datetime(2021, 2, 23, tzinfo=TZ180): {
+                "geomagnetic": "4",
+                "humidity": "51",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "2",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "3",
+                "roadcondition": "Сухая дорога",
+                "wind-direction": "СЗ",
+                "wind-gust": "414",
+                "wind-speed": "14",
+            },
+            datetime(2021, 2, 24, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "48",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "1",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "5",
+                "roadcondition": "Сухая дорога",
+                "wind-direction": "СЗ",
+                "wind-gust": "414",
+                "wind-speed": "14",
+            },
+            datetime(2021, 2, 25, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "48",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "1",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "7",
+                "roadcondition": "Нет данных",
+                "wind-direction": "СЗ",
+                "wind-gust": "414",
+                "wind-speed": "14",
+            },
+            datetime(2021, 2, 26, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "65",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "3",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "5,9",
+                "radiation": "1",
+                "roadcondition": "Нет данных",
+                "wind-direction": "С",
+                "wind-gust": "414",
+                "wind-speed": "14",
+            },
+            datetime(2021, 2, 27, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "66",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "2",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "7",
+                "roadcondition": "Нет данных",
+                "wind-direction": "С",
+                "wind-gust": "622",
+                "wind-speed": "27",
+            },
+            datetime(2021, 2, 28, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "56",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "0",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "7",
+                "roadcondition": "Нет данных",
+                "wind-direction": "СЗ",
+                "wind-gust": "311",
+                "wind-speed": "14",
+            },
+            datetime(2021, 3, 1, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "55",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "–",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "6",
+                "roadcondition": "Нет данных",
+                "wind-direction": "СЗ",
+                "wind-gust": "414",
+                "wind-speed": "27",
+            },
+            datetime(2021, 3, 2, tzinfo=TZ180): {
+                "geomagnetic": "2",
+                "humidity": "54",
+                "icon-snow": "–",
+                "icon-tooltip": "",
+                "pollen-birch": "–",
+                "pollen-grass": "–",
+                "pollen-ragweed": "–",
+                "precipitation-bars": "0",
+                "radiation": "6",
+                "roadcondition": "Нет данных",
+                "wind-direction": "З",
+                "wind-gust": "518",
+                "wind-speed": "27",
+            },
         }
 
         assert data == expected_data
@@ -259,7 +440,9 @@ async def test_api_init():
         "wind_bearing": 5,
         "wind_speed": 3,
         "gm_field": 3,
-        "allergy_birch": 2,
+        "pollen_birch": 2,
+        "pollen_grass": None,
+        "pollen_ragweed": None,
         "uv_index": 2,
     }
 
@@ -376,19 +559,19 @@ async def test_temperature():
     assert gismeteo.temperature(gismeteo.forecast_data(3)) == -11.0
 
 
-async def test_temperature_feels_like():
-    """Test temperature feels like."""
+async def test_apparent_temperature():
+    """Test apparent temperature feels like."""
     gismeteo = await init_gismeteo()
 
-    assert gismeteo.temperature_feels_like() == -12.3
-    assert gismeteo.temperature_feels_like(gismeteo.current_data) == -12.3
+    assert gismeteo.apparent_temperature() == -12.3
+    assert gismeteo.apparent_temperature(gismeteo.current_data) == -12.3
 
-    assert gismeteo.temperature_feels_like(gismeteo.forecast_data(0)) == -12.3
-    assert gismeteo.temperature_feels_like(gismeteo.forecast_data(3)) == -17.2
+    assert gismeteo.apparent_temperature(gismeteo.forecast_data(0)) == -12.3
+    assert gismeteo.apparent_temperature(gismeteo.forecast_data(3)) == -17.2
 
-    for kind in ["temperature", "humidity", "wind_speed"]:
-        with patch.object(gismeteo, kind, return_value=STATE_UNKNOWN):
-            assert gismeteo.temperature_feels_like() == STATE_UNKNOWN
+    for stype in ["temperature", "humidity", "wind_speed"]:
+        with patch.object(gismeteo, stype, return_value=None):
+            assert gismeteo.apparent_temperature() is None
 
 
 async def test_water_temperature():
@@ -406,11 +589,11 @@ async def test_pressure():
     """Test pressure in hPa."""
     gismeteo = await init_gismeteo()
 
-    assert gismeteo.pressure() == 994.6
-    assert gismeteo.pressure(gismeteo.current_data) == 994.6
+    assert gismeteo.pressure() == 746
+    assert gismeteo.pressure(gismeteo.current_data) == 746
 
-    assert gismeteo.pressure(gismeteo.forecast_data(0)) == 994.6
-    assert gismeteo.pressure(gismeteo.forecast_data(3)) == 998.6
+    assert gismeteo.pressure(gismeteo.forecast_data(0)) == 746
+    assert gismeteo.pressure(gismeteo.forecast_data(3)) == 749
 
 
 async def test_humidity():
@@ -435,17 +618,6 @@ async def test_wind_bearing():
     assert gismeteo.wind_bearing(gismeteo.forecast_data(3)) == 45
 
 
-async def test_wind_speed_kmh():
-    """Test wind speed in km/h."""
-    gismeteo = await init_gismeteo()
-
-    assert gismeteo.wind_speed_kmh() == 10.8
-    assert gismeteo.wind_speed_kmh(gismeteo.current_data) == 10.8
-
-    assert gismeteo.wind_speed_kmh(gismeteo.forecast_data(0)) == 10.8
-    assert gismeteo.wind_speed_kmh(gismeteo.forecast_data(3)) == 14.4
-
-
 async def test_wind_speed():
     """Test wind speed in m/s."""
     gismeteo = await init_gismeteo()
@@ -468,37 +640,37 @@ async def test_precipitation_amount():
     assert gismeteo.precipitation_amount(gismeteo.forecast_data(3)) == 0.1
 
 
-async def test_clouds():
+async def test_cloud_coverage():
     """Test the cloudiness amount in percents."""
     gismeteo = await init_gismeteo()
 
-    assert gismeteo.clouds() == 100
-    assert gismeteo.clouds(gismeteo.current_data) == 100
+    assert gismeteo.cloud_coverage() == 100
+    assert gismeteo.cloud_coverage(gismeteo.current_data) == 100
 
-    assert gismeteo.clouds(gismeteo.forecast_data(0)) == 100
-    assert gismeteo.clouds(gismeteo.forecast_data(3)) == 100
+    assert gismeteo.cloud_coverage(gismeteo.forecast_data(0)) == 100
+    assert gismeteo.cloud_coverage(gismeteo.forecast_data(3)) == 100
 
 
-async def test_rain():
+async def test_rain_amount():
     """Test the rain amount in mm."""
     gismeteo = await init_gismeteo()
 
-    assert gismeteo.rain() == 0
-    assert gismeteo.rain(gismeteo.current_data) == 0
+    assert gismeteo.rain_amount() == 0
+    assert gismeteo.rain_amount(gismeteo.current_data) == 0
 
-    assert gismeteo.rain(gismeteo.forecast_data(0)) == 0
-    assert gismeteo.rain(gismeteo.forecast_data(3)) == 0
+    assert gismeteo.rain_amount(gismeteo.forecast_data(0)) == 0
+    assert gismeteo.rain_amount(gismeteo.forecast_data(3)) == 0
 
 
-async def test_snow():
+async def test_snow_amount():
     """Test the snow amount in mm."""
     gismeteo = await init_gismeteo()
 
-    assert gismeteo.snow() == 0.3
-    assert gismeteo.snow(gismeteo.current_data) == 0.3
+    assert gismeteo.snow_amount() == 0.3
+    assert gismeteo.snow_amount(gismeteo.current_data) == 0.3
 
-    assert gismeteo.snow(gismeteo.forecast_data(0)) == 2.2
-    assert gismeteo.snow(gismeteo.forecast_data(3)) == 0.1
+    assert gismeteo.snow_amount(gismeteo.forecast_data(0)) == 2.2
+    assert gismeteo.snow_amount(gismeteo.forecast_data(3)) == 0.1
 
 
 async def test_storm():
@@ -512,32 +684,56 @@ async def test_storm():
     assert gismeteo.storm(gismeteo.forecast_data(3)) is False
 
 
-async def test_geomagnetic():
+async def test_geomagnetic_field():
     """Test geomagnetic field index."""
     gismeteo = await init_gismeteo()
 
-    assert gismeteo.geomagnetic() == 3
-    assert gismeteo.geomagnetic(gismeteo.current_data) == 3
+    assert gismeteo.geomagnetic_field() == 3
+    assert gismeteo.geomagnetic_field(gismeteo.current_data) == 3
 
-    assert gismeteo.geomagnetic(gismeteo.forecast_data(0)) == 3
-    assert gismeteo.geomagnetic(gismeteo.forecast_data(3)) == 3
+    assert gismeteo.geomagnetic_field(gismeteo.forecast_data(0)) == 3
+    assert gismeteo.geomagnetic_field(gismeteo.forecast_data(3)) == 3
 
 
-async def test_allergy_birch():
-    """Test allergy birch value."""
+async def test_pollen_birch():
+    """Test birch pollen value."""
     gismeteo_d = await init_gismeteo()
 
-    assert gismeteo_d.allergy_birch() == 2
-    assert (
-        gismeteo_d.allergy_birch(gismeteo_d.forecast_data(0, FORECAST_MODE_DAILY)) == 2
-    )
+    assert gismeteo_d.pollen_birch() == 2
 
-    assert (
-        gismeteo_d.allergy_birch(gismeteo_d.forecast_data(1, FORECAST_MODE_DAILY)) == 0
-    )
-    assert (
-        gismeteo_d.allergy_birch(gismeteo_d.forecast_data(6, FORECAST_MODE_DAILY)) == 11
-    )
+    for day, exp in enumerate([2, 2, 2, 1, 1, 3, 2]):
+        assert (
+            gismeteo_d.pollen_birch(gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY))
+            == exp
+        )
+
+
+async def test_pollen_grass():
+    """Test grass pollen value."""
+    gismeteo_d = await init_gismeteo()
+
+    assert gismeteo_d.pollen_grass() is None
+
+    for day, exp in enumerate([None, None, None, None, None, None, None]):
+        assert (
+            gismeteo_d.pollen_grass(gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY))
+            == exp
+        )
+
+
+async def test_pollen_ragweed():
+    """Test ragweed pollen value."""
+    gismeteo_d = await init_gismeteo()
+
+    assert gismeteo_d.pollen_ragweed() is None
+
+    for day, exp in enumerate([None, None, None, None, None, None, None]):
+        assert (
+            gismeteo_d.pollen_ragweed(
+                gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY)
+            )
+            == exp
+        )
 
 
 async def test_uv_index():
@@ -545,41 +741,44 @@ async def test_uv_index():
     gismeteo_d = await init_gismeteo()
 
     assert gismeteo_d.uv_index() == 2
-    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(0, FORECAST_MODE_DAILY)) == 2
 
-    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(1, FORECAST_MODE_DAILY)) == 4
-    assert gismeteo_d.uv_index(gismeteo_d.forecast_data(6, FORECAST_MODE_DAILY)) == 1
+    for day, exp in enumerate([2, 4, 3, 5, 7, 1, 7]):
+        assert (
+            gismeteo_d.uv_index(gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY))
+            == exp
+        )
 
 
-async def test_forecast():
-    """Test forecast."""
-    with patch(
-        "homeassistant.util.dt.now",
-        return_value=datetime(2021, 2, 26, tzinfo=dt_util.UTC),
-    ):
-        gismeteo_d = await init_gismeteo()
-
-        assert gismeteo_d.forecast(FORECAST_MODE_DAILY) == [
-            {
-                "datetime": datetime(2021, 2, 26, tzinfo=TZ180),
-                "condition": "rainy",
-                "temperature": 4.0,
-                "pressure": 0.0,
-                "humidity": 89,
-                "wind_speed": 25.2,
-                "wind_bearing": 270,
-                "precipitation": 0.3,
-                "templow": 2,
-            },
-            {
-                "datetime": datetime(2021, 2, 27, tzinfo=TZ180),
-                "condition": "cloudy",
-                "temperature": 2.0,
-                "pressure": 0.0,
-                "humidity": 87,
-                "wind_speed": 21.6,
-                "wind_bearing": 270,
-                "precipitation": 0.0,
-                "templow": 0,
-            },
-        ]
+#
+# async def test_forecast():
+#     """Test forecast."""
+#     with patch(
+#         "homeassistant.util.dt.now",
+#         return_value=datetime(2021, 2, 26, tzinfo=dt_util.UTC),
+#     ):
+#         gismeteo_d = await init_gismeteo()
+#
+#         assert gismeteo_d.forecast(FORECAST_MODE_DAILY) == [
+#             {
+#                 "datetime": datetime(2021, 2, 26, tzinfo=TZ180),
+#                 "condition": "rainy",
+#                 "temperature": 4.0,
+#                 "pressure": 0.0,
+#                 "humidity": 89,
+#                 "wind_speed": 7,
+#                 "wind_bearing": 270,
+#                 "precipitation": 0.3,
+#                 "templow": 2,
+#             },
+#             {
+#                 "datetime": datetime(2021, 2, 27, tzinfo=TZ180),
+#                 "condition": "cloudy",
+#                 "temperature": 2.0,
+#                 "pressure": 0.0,
+#                 "humidity": 87,
+#                 "wind_speed": 6,
+#                 "wind_bearing": 270,
+#                 "precipitation": 0.0,
+#                 "templow": 0,
+#             },
+#         ]

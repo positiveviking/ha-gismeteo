@@ -1,4 +1,152 @@
 {
+    "entity": {
+      "sensor": {
+        "condition": {
+          "name": "Condition",
+          "state": {
+            "clear-night": "Clear, night",
+            "cloudy": "Cloudy",
+            "exceptional": "Exceptional",
+            "fog": "Fog",
+            "hail": "Hail",
+            "lightning": "Lightning",
+            "lightning-rainy": "Lightning, rainy",
+            "partlycloudy": "Partly cloudy",
+            "pouring": "Pouring",
+            "rainy": "Rainy",
+            "snowy": "Snowy",
+            "snowy-rainy": "Snowy, rainy",
+            "sunny": "Sunny",
+            "windy": "Windy",
+            "windy-variant": "Windy"
+          }
+        },
+        "temperature": {
+          "name": "Temperature"
+        },
+        "apparent_temperature": {
+          "name": "Apparent Temperature"
+        },
+        "humidity": {
+          "name": "Humidity"
+        },
+        "pressure": {
+          "name": "Pressure"
+        },
+        "wind_speed": {
+          "name": "Wind Speed"
+        },
+        "wind_bearing": {
+          "name": "Wind Bearing"
+        },
+        "cloud_coverage": {
+          "name": "Cloud Coverage"
+        },
+        "rain_amount": {
+          "name": "Rain Amount"
+        },
+        "snow_amount": {
+          "name": "Snow Amount"
+        },
+        "storm": {
+          "name": "Storm",
+          "state": {
+            "False": "False",
+            "True": "True"
+          }
+        },
+        "geomagnetic_field": {
+          "name": "Geomagnetic Field"
+        },
+        "water_temperature": {
+          "name": "Water Temperature"
+        },
+        "uv_index": {
+          "name": "UV Index"
+        },
+        "pollen_birch": {
+          "name": "Birch Pollen Index"
+        },
+        "pollen_grass": {
+          "name": "Grass Pollen Index"
+        },
+        "pollen_ragweed": {
+          "name": "Ragweed Pollen Index"
+        },
+        "condition_forecast": {
+          "name": "Condition Forecast {day}d",
+          "state": {
+            "clear-night": "Clear, night",
+            "cloudy": "Cloudy",
+            "exceptional": "Exceptional",
+            "fog": "Fog",
+            "hail": "Hail",
+            "lightning": "Lightning",
+            "lightning-rainy": "Lightning, rainy",
+            "partlycloudy": "Partly cloudy",
+            "pouring": "Pouring",
+            "rainy": "Rainy",
+            "snowy": "Snowy",
+            "snowy-rainy": "Snowy, rainy",
+            "sunny": "Sunny",
+            "windy": "Windy",
+            "windy-variant": "Windy"
+          }
+        },
+        "temperature_forecast": {
+          "name": "Temperature Forecast {day}d"
+        },
+        "apparent_temperature_forecast": {
+          "name": "Apparent Temperature Forecast {day}d"
+        },
+        "humidity_forecast": {
+          "name": "Humidity Forecast {day}d"
+        },
+        "pressure_forecast": {
+          "name": "Pressure Forecast {day}d"
+        },
+        "wind_speed_forecast": {
+          "name": "Wind Speed Forecast {day}d"
+        },
+        "wind_bearing_forecast": {
+          "name": "Wind Bearing Forecast {day}d"
+        },
+        "cloud_coverage_forecast": {
+          "name": "Cloud Coverage Forecast {day}d"
+        },
+        "rain_amount_forecast": {
+          "name": "Rain Amount Forecast {day}d"
+        },
+        "snow_amount_forecast": {
+          "name": "Snow Amount Forecast {day}d"
+        },
+        "storm_forecast": {
+          "name": "Storm Forecast {day}d",
+          "state": {
+            "False": "False",
+            "True": "True"
+          }
+        },
+        "geomagnetic_field_forecast": {
+          "name": "Geomagnetic Field Forecast {day}d"
+        },
+        "water_temperature_forecast": {
+          "name": "Water Temperature Forecast {day}d"
+        },
+        "uv_index_forecast": {
+          "name": "UV Index Forecast {day}d"
+        },
+        "pollen_birch_forecast": {
+          "name": "Birch Pollen Index Forecast {day}d"
+        },
+        "pollen_grass_forecast": {
+          "name": "Grass Pollen Index Forecast {day}d"
+        },
+        "pollen_ragweed_forecast": {
+          "name": "Ragweed Pollen Index Forecast {day}d"
+        }
+      }
+    },
     "config": {
         "abort": {
             "no_mixed_config": "Already configured. Configuration via configuration.yaml are not compatible with configurations via UI."

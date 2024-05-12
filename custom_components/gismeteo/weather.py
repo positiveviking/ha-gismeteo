@@ -7,22 +7,21 @@ For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
+from functools import cached_property
 import logging
 
 from homeassistant.components.weather import WeatherEntity
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import CONF_NAME, UnitOfTemperature
+from homeassistant.const import (
+    CONF_NAME,
+    UnitOfPressure,
+    UnitOfSpeed,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 
 from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
-from .const import (
-    ATTRIBUTION,
-    CONF_PLATFORM_FORMAT,
-    COORDINATOR,
-    DOMAIN,
-    DOMAIN_YAML,
-    WEATHER,
-)
+from .const import ATTRIBUTION, COORDINATOR, DOMAIN, DOMAIN_YAML
 from .entity import GismeteoEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,26 +35,20 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
         for uid, cfg in hass.data[DOMAIN_YAML].items():
             cfg = _convert_yaml_config(cfg)
 
-            if cfg.get(CONF_PLATFORM_FORMAT.format(WEATHER), False) is False:
-                continue  # pragma: no cover
-
             location_name = cfg.get(CONF_NAME, deslugify(uid))
             coordinator = hass.data[DOMAIN][uid][COORDINATOR]
 
-            entities.append(GismeteoWeather(location_name, coordinator))
+            entities.append(GismeteoWeather(coordinator, location_name))
 
     else:
         # Setup from config entry
         config = config_entry.data.copy()  # type: ConfigType
         config.update(config_entry.options)
 
-        if config.get(CONF_PLATFORM_FORMAT.format(WEATHER), False) is False:
-            return  # pragma: no cover
-
         location_name = config[CONF_NAME]
         coordinator = hass.data[DOMAIN][config_entry.entry_id][COORDINATOR]
 
-        entities.append(GismeteoWeather(location_name, coordinator))
+        entities.append(GismeteoWeather(coordinator, location_name))
 
     async_add_entities(entities, False)
 
@@ -63,62 +56,80 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
 class GismeteoWeather(GismeteoEntity, WeatherEntity):
     """Implementation of an Gismeteo sensor."""
 
-    def __init__(self, location_name: str, coordinator: GismeteoDataUpdateCoordinator):
+    _attr_has_entity_name = True
+    _attr_name = None
+    _attr_attribution = ATTRIBUTION
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_pressure_unit = UnitOfPressure.MMHG
+    _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
+
+    def __init__(
+        self,
+        coordinator: GismeteoDataUpdateCoordinator,
+        location_name: str,
+    ) -> None:
         """Initialize."""
-        super().__init__(location_name, coordinator)
-        self._attrs = {}
+        super().__init__(coordinator, location_name)
 
-    @property
-    def unique_id(self):
-        """Return a unique_id for this entity."""
-        return self.coordinator.unique_id
+        self._attr_unique_id = coordinator.unique_id
+        self._attr_translation_placeholders = {
+            "location_name": location_name,
+        }
 
-    @property
-    def name(self):
-        """Return the name."""
-        return self._location_name
-
-    @property
-    def attribution(self):
-        """Return the attribution."""
-        return ATTRIBUTION
-
-    @property
-    def condition(self):
+    @cached_property
+    def condition(self) -> str | None:
         """Return the current condition."""
         return self._gismeteo.condition()
 
-    @property
-    def temperature(self):
-        """Return the current temperature."""
+    @cached_property
+    def native_temperature(self) -> float | None:
+        """Return the temperature in native units."""
         return self._gismeteo.temperature()
 
-    @property
-    def temperature_unit(self):
-        """Return the unit of measurement."""
-        return UnitOfTemperature.CELSIUS
-
-    @property
-    def pressure(self):
-        """Return the current pressure."""
+    @cached_property
+    def native_pressure(self) -> float | None:
+        """Return the pressure in native units."""
         return self._gismeteo.pressure()
 
-    @property
-    def humidity(self):
-        """Return the name of the sensor."""
+    @cached_property
+    def humidity(self) -> float | None:
+        """Return the humidity in %."""
         return self._gismeteo.humidity()
 
-    @property
-    def wind_bearing(self):
-        """Return the current wind bearing."""
+    @cached_property
+    def wind_bearing(self) -> float | str | None:
+        """Return the wind bearing."""
         return self._gismeteo.wind_bearing()
 
-    @property
-    def wind_speed(self):
-        """Return the current wind speed."""
-        return self._gismeteo.wind_speed_kmh()
+    @cached_property
+    def native_wind_speed(self) -> float | None:
+        """Return the wind speed in native units."""
+        return self._gismeteo.wind_speed()
 
-    @property
-    def forecast(self):
-        """Return the forecast array."""
-        return self._gismeteo.forecast()
+    @cached_property
+    def cloud_coverage(self) -> float | None:
+        """Return the Cloud coverage in %."""
+        return self._gismeteo.cloud_coverage()
+
+    @cached_property
+    def uv_index(self) -> float | None:
+        """Return the UV index."""
+        return self._gismeteo.uv_index()
+
+    #
+    # @property
+    # def forecast(self):
+    #     """Return the forecast array."""
+    #     return self._gismeteo.forecast()
+    #
+    # async def async_forecast_daily(self) -> list[Forecast] | None:
+    #     """Return the daily forecast in native units."""
+    #     raise NotImplementedError
+    #
+    # async def async_forecast_twice_daily(self) -> list[Forecast] | None:
+    #     """Return the daily forecast in native units."""
+    #     raise NotImplementedError
+    #
+    # async def async_forecast_hourly(self) -> list[Forecast] | None:
+    #     """Return the hourly forecast in native units."""
+    #     raise NotImplementedError

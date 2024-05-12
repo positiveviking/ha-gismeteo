@@ -111,6 +111,7 @@ async def test_async_setup_entry_yaml(hass: HomeAssistant, gismeteo_api):
             data={},
         ),
     )
+    await hass.async_block_till_done(True)
 
     state = hass.states.get(f"{WEATHER_DOMAIN}.home")
     assert state is not None

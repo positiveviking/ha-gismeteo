@@ -60,11 +60,13 @@ from .const import (
     ATTR_FORECAST_STORM,
     ATTR_SUNRISE,
     ATTR_SUNSET,
-    ATTR_WEATHER_ALLERGY_BIRCH,
     ATTR_WEATHER_CLOUDINESS,
     ATTR_WEATHER_CONDITION,
     ATTR_WEATHER_GEOMAGNETIC_FIELD,
     ATTR_WEATHER_PHENOMENON,
+    ATTR_WEATHER_POLLEN_BIRCH,
+    ATTR_WEATHER_POLLEN_GRASS,
+    ATTR_WEATHER_POLLEN_RAGWEED,
     ATTR_WEATHER_PRECIPITATION_AMOUNT,
     ATTR_WEATHER_PRECIPITATION_INTENSITY,
     ATTR_WEATHER_PRECIPITATION_TYPE,
@@ -75,8 +77,6 @@ from .const import (
     ENDPOINT_URL,
     FORECAST_MODE_DAILY,
     FORECAST_MODE_HOURLY,
-    MMHG2HPA,
-    MS2KMH,
     PARSED_UPDATE_INTERVAL,
     PARSER_URL_FORMAT,
     PARSER_USER_AGENT,
@@ -114,7 +114,7 @@ class GismeteoApiClient:
         latitude: float | None = None,
         longitude: float | None = None,
         params: dict | None = None,
-    ):
+    ) -> None:
         """Initialize."""
         params = params or {}
 
@@ -154,12 +154,12 @@ class GismeteoApiClient:
         return True
 
     @property
-    def attributes(self):
+    def attributes(self) -> dict[str, Any] | None:
         """Return an attributes."""
         return self._attributes
 
     @property
-    def current_data(self):
+    def current_data(self) -> dict[str, Any]:
         """Return current weather data."""
         return self._current
 
@@ -214,8 +214,14 @@ class GismeteoApiClient:
 
         return data
 
-    async def async_update_location(self):
+    async def async_update_location(self) -> None:
         """Retreive location data from Gismeteo."""
+        if (
+            self._attributes[ATTR_LATITUDE] == 0
+            and self._attributes[ATTR_LONGITUDE] == 0
+        ):
+            return
+
         url = (
             ENDPOINT_URL
             + f"/cities/?lat={self._attributes[ATTR_LATITUDE]}&lng={self._attributes[ATTR_LONGITUDE]}&count=1&lang=en"
@@ -238,16 +244,19 @@ class GismeteoApiClient:
             ) from ex
 
     async def async_get_forecast(self):
-        """Get the latest forecast data from Gismeteo."""
+        """Get the latest forecast data from Gismeteo API."""
         if ATTR_ID not in self.attributes:
             await self.async_update_location()
+
+            if ATTR_ID not in self.attributes:
+                return ""
 
         url = f"{ENDPOINT_URL}/forecast/?city={self.attributes[ATTR_ID]}&lang=en"
         cache_fname = f"forecast_{self.attributes[ATTR_ID]}"
 
         return await self._async_get_data(url, cache_fname)
 
-    async def async_get_parsed(self):
+    async def async_get_parsed(self) -> dict[str, Any]:
         """Retrieve data from Gismeteo main site."""
         forecast = await self.async_get_forecast()
         location = etree.fromstring(forecast).find("location")
@@ -264,15 +273,16 @@ class GismeteoApiClient:
         parser = BeautifulSoup(response, "html.parser")
 
         try:
-            for key in ("allergy", "uvb"):
-                data_div = parser.find("div", {"data-widget-id": key})
-                for item in data_div.find_all("div", {"class": "widget__item"}):
-                    day = int(item.attrs["data-item"])
-                    date = today + timedelta(days=day)
-                    value = item.find("div", {"class": "widget__value"})
-                    if value:
-                        data.setdefault(date, {})
-                        data[date][key] = int(value.text.strip())
+            for row in parser.find_all("div", {"class": "widget-row"}):
+                if "data-row" not in row.attrs:
+                    continue
+                metric = row["data-row"]
+                for day, row_data in enumerate(
+                    row.find_all("div", {"class": "row-item"})
+                ):
+                    ts = today + timedelta(days=day)
+                    data.setdefault(ts, {})
+                    data[ts][metric] = "".join(row_data.stripped_strings)
 
             return data
 
@@ -290,11 +300,13 @@ class GismeteoApiClient:
         return res
 
     @staticmethod
-    def _is_day(testing_time: datetime, sunrise_time: datetime, sunset_time: datetime):
+    def _is_day(
+        testing_time: datetime, sunrise_time: datetime, sunset_time: datetime
+    ) -> bool:
         """Return True if sun are shining."""
         return sunrise_time < testing_time < sunset_time
 
-    def condition(self, src=None, mode: str = FORECAST_MODE_HOURLY):
+    def condition(self, src=None, mode: str = FORECAST_MODE_HOURLY) -> str | None:
         """Return the condition summary."""
         src = src or self._current
 
@@ -347,19 +359,18 @@ class GismeteoApiClient:
 
         return cond
 
-    def temperature(self, src=None):
+    def temperature(self, src=None) -> float | None:
         """Return the temperature."""
         src = src or self._current
-        temperature = src.get(ATTR_WEATHER_TEMPERATURE)
-        return float(temperature) if temperature is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_TEMPERATURE)
 
-    def temperature_feels_like(self, src=None):
+    def apparent_temperature(self, src=None) -> float | None:
         """Return the temperature feels like."""
         temp = self.temperature(src)
         humi = self.humidity(src)
         wind = self.wind_speed(src)
-        if STATE_UNKNOWN in (temp, humi, wind):
-            return STATE_UNKNOWN
+        if None in (temp, humi, wind):
+            return None
 
         e_value = humi * 0.06105 * math.exp((17.27 * temp) / (237.7 + temp))
         feels = temp + 0.348 * e_value - 0.7 * wind - 4.25
@@ -371,49 +382,39 @@ class GismeteoApiClient:
         temperature = src.get(ATTR_WEATHER_WATER_TEMPERATURE)
         return float(temperature) if temperature is not None else STATE_UNKNOWN
 
-    def pressure(self, src=None):
-        """Return the pressure in hPa."""
+    def pressure(self, src=None) -> float | None:
+        """Return the pressure in mmHg."""
         src = src or self._current
-        pressure = src.get(ATTR_WEATHER_PRESSURE)
-        return round(pressure * MMHG2HPA, 1) if pressure is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_PRESSURE)
 
-    def humidity(self, src=None):
-        """Return the humidity."""
+    def humidity(self, src=None) -> float | None:
+        """Return the humidity in %."""
         src = src or self._current
-        humidity = src.get(ATTR_WEATHER_HUMIDITY)
-        return int(humidity) if humidity is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_HUMIDITY)
 
-    def wind_bearing(self, src=None):
+    def wind_bearing(self, src=None) -> float | str | None:
         """Return the wind bearing."""
         src = src or self._current
         bearing = int(src.get(ATTR_WEATHER_WIND_BEARING, 0))
-        return (bearing - 1) * 45 if bearing > 0 else STATE_UNKNOWN
+        return (bearing - 1) * 45 if bearing > 0 else None
 
-    def wind_speed_kmh(self, src=None):
-        """Return the wind speed in km/h."""
-        src = src or self._current
-        speed = src.get(ATTR_WEATHER_WIND_SPEED)
-        return round(speed * MS2KMH, 1) if speed is not None else STATE_UNKNOWN
-
-    def wind_speed(self, src=None):
+    def wind_speed(self, src=None) -> float | None:
         """Return the wind speed in m/s."""
         src = src or self._current
-        speed = src.get(ATTR_WEATHER_WIND_SPEED)
-        return float(speed) if speed is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_WIND_SPEED)
 
-    def precipitation_amount(self, src=None):
+    def precipitation_amount(self, src=None) -> float | None:
         """Return the precipitation amount in mm."""
         src = src or self._current
-        precipitation = src.get(ATTR_WEATHER_PRECIPITATION_AMOUNT)
-        return precipitation if precipitation is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_PRECIPITATION_AMOUNT)
 
-    def clouds(self, src=None):
-        """Return the cloudiness amount in percents."""
+    def cloud_coverage(self, src=None) -> float | None:
+        """Return the cloud coverage amount in percents."""
         src = src or self._current
         cloudiness = src.get(ATTR_WEATHER_CLOUDINESS)
-        return int(cloudiness * 100 / 3) if cloudiness is not None else STATE_UNKNOWN
+        return int(cloudiness * 100 / 3) if cloudiness is not None else None
 
-    def rain(self, src=None):
+    def rain_amount(self, src=None) -> float | None:
         """Return the rain amount in mm."""
         src = src or self._current
         return (
@@ -425,7 +426,7 @@ class GismeteoApiClient:
             else 0
         )
 
-    def snow(self, src=None):
+    def snow_amount(self, src=None) -> float | None:
         """Return the snow amount in mm."""
         src = src or self._current
         return (
@@ -437,29 +438,35 @@ class GismeteoApiClient:
             else 0
         )
 
-    def storm(self, src=None):
+    def storm(self, src=None) -> bool | None:
         """Return True if storm."""
         src = src or self._current
-        storm = src.get(ATTR_WEATHER_STORM)
-        return storm if storm is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_STORM)
 
-    def geomagnetic(self, src=None):
+    def geomagnetic_field(self, src=None) -> int | None:
         """Return geomagnetic field index."""
         src = src or self._current
-        geomagnetic = src.get(ATTR_WEATHER_GEOMAGNETIC_FIELD)
-        return geomagnetic if geomagnetic is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_GEOMAGNETIC_FIELD)
 
-    def allergy_birch(self, src=None):
-        """Return allergy birch value."""
+    def pollen_birch(self, src=None) -> int | None:
+        """Return birch pollen value."""
         src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
-        allergy = src.get(ATTR_WEATHER_ALLERGY_BIRCH)
-        return allergy if allergy is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_POLLEN_BIRCH)
+
+    def pollen_grass(self, src=None) -> int | None:
+        """Return grass pollen value."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        return src.get(ATTR_WEATHER_POLLEN_GRASS)
+
+    def pollen_ragweed(self, src=None) -> int | None:
+        """Return grass pollen value."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        return src.get(ATTR_WEATHER_POLLEN_RAGWEED)
 
     def uv_index(self, src=None):
         """Return UV index."""
         src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
-        uv_index = src.get(ATTR_WEATHER_UV_INDEX)
-        return uv_index if uv_index is not None else STATE_UNKNOWN
+        return src.get(ATTR_WEATHER_UV_INDEX)
 
     def forecast(self, mode: str = FORECAST_MODE_HOURLY):
         """Return the forecast array."""
@@ -480,7 +487,7 @@ class GismeteoApiClient:
                 ATTR_FORECAST_TEMP: self.temperature(i),
                 ATTR_FORECAST_PRESSURE: self.pressure(i),
                 ATTR_FORECAST_HUMIDITY: self.humidity(i),
-                ATTR_FORECAST_WIND_SPEED: self.wind_speed_kmh(i),
+                ATTR_FORECAST_WIND_SPEED: self.wind_speed(i),
                 ATTR_FORECAST_WIND_BEARING: self.wind_bearing(i),
                 ATTR_FORECAST_PRECIPITATION: self.precipitation_amount(i),
             }
@@ -591,10 +598,18 @@ class GismeteoApiClient:
                     if parsed:
                         data.update(
                             {
-                                ATTR_WEATHER_ALLERGY_BIRCH: self._get(
-                                    parsed, "allergy"
+                                ATTR_WEATHER_POLLEN_BIRCH: self._get(
+                                    parsed, "pollen-birch", int
                                 ),
-                                ATTR_WEATHER_UV_INDEX: self._get(parsed, "uvb"),
+                                ATTR_WEATHER_POLLEN_GRASS: self._get(
+                                    parsed, "pollen-grass", int
+                                ),
+                                ATTR_WEATHER_POLLEN_RAGWEED: self._get(
+                                    parsed, "pollen-ragweed", int
+                                ),
+                                ATTR_WEATHER_UV_INDEX: self._get(
+                                    parsed, "radiation", int
+                                ),
                             }
                         )
 
@@ -627,8 +642,16 @@ class GismeteoApiClient:
                 if parsed:
                     data.update(
                         {
-                            ATTR_WEATHER_ALLERGY_BIRCH: self._get(parsed, "allergy"),
-                            ATTR_WEATHER_UV_INDEX: self._get(parsed, "uvb"),
+                            ATTR_WEATHER_POLLEN_BIRCH: self._get(
+                                parsed, "pollen-birch", int
+                            ),
+                            ATTR_WEATHER_POLLEN_GRASS: self._get(
+                                parsed, "pollen-grass", int
+                            ),
+                            ATTR_WEATHER_POLLEN_RAGWEED: self._get(
+                                parsed, "pollen-ragweed", int
+                            ),
+                            ATTR_WEATHER_UV_INDEX: self._get(parsed, "radiation", int),
                         }
                     )
 

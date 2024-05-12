@@ -7,21 +7,22 @@ For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
+from datetime import date, datetime
+from decimal import Decimal
+from functools import cached_property
 import logging
-from typing import Any
+from typing import Final
 
-from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import (
-    ATTR_ATTRIBUTION,
-    ATTR_DEVICE_CLASS,
-    ATTR_ICON,
-    ATTR_NAME,
-    ATTR_UNIT_OF_MEASUREMENT,
-    CONF_MONITORED_CONDITIONS,
-    CONF_NAME,
+from homeassistant.components.sensor import (
+    PLATFORM_SCHEMA,
+    SensorEntity,
+    SensorEntityDescription,
 )
+from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
+from homeassistant.const import CONF_MONITORED_CONDITIONS, CONF_NAME, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.typing import ConfigType
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.typing import ConfigType, StateType
 
 from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
 from .const import (
@@ -31,31 +32,57 @@ from .const import (
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
-    SENSOR,
-    SENSOR_TYPES,
+    SENSOR_DESCRIPTIONS,
+    TYPE_APPARENT_TEMPERATURE,
+    TYPE_CLOUD_COVERAGE,
+    TYPE_CLOUDS,
+    TYPE_CONDITION,
+    TYPE_GEOMAGNETIC,
+    TYPE_GEOMAGNETIC_FIELD,
+    TYPE_RAIN,
+    TYPE_RAIN_AMOUNT,
+    TYPE_SNOW,
+    TYPE_SNOW_AMOUNT,
+    TYPE_TEMPERATURE_FEELS_LIKE,
+    TYPE_WEATHER,
 )
 from .entity import GismeteoEntity
 
 _LOGGER = logging.getLogger(__name__)
 
+PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({})
 
-def _fix_kinds(kinds: list[str], warn=True) -> list[str]:
-    """Remove unwanted values from kinds."""
-    kinds = set(kinds)
+DEPRECATED_SENSOR_TYPES: Final = {
+    TYPE_WEATHER: TYPE_CONDITION,
+    TYPE_TEMPERATURE_FEELS_LIKE: TYPE_APPARENT_TEMPERATURE,
+    TYPE_CLOUDS: TYPE_CLOUD_COVERAGE,
+    TYPE_RAIN: TYPE_RAIN_AMOUNT,
+    TYPE_SNOW: TYPE_SNOW_AMOUNT,
+    TYPE_GEOMAGNETIC: TYPE_GEOMAGNETIC_FIELD,
+}
 
-    for kind in ["forecast", "pressure_mmhg", "weather"]:
-        if kind in kinds:
-            kinds.remove(kind)
 
-            if kind == "weather":
-                kinds = kinds | {"condition"}
+def _fix_types(types: list[str], warn=True) -> list[str]:
+    """Remove unwanted values from types."""
+    types = set(types)
+
+    dep_types = ["forecast", "pressure_mmhg"]
+    dep_types.extend(DEPRECATED_SENSOR_TYPES.keys())
+    for stype in dep_types:
+        if stype in types:
+            types.remove(stype)
+
+            if stype in DEPRECATED_SENSOR_TYPES:
+                types.add(DEPRECATED_SENSOR_TYPES[stype])
                 if warn:
                     _LOGGER.warning(
-                        'The "weather" condition is deprecated,'
-                        ' please replace it with "condition"'
+                        'The "%s" condition is deprecated,'
+                        ' please replace it with "%s"',
+                        stype,
+                        DEPRECATED_SENSOR_TYPES[stype],
                     )
 
-    return [x for x in SENSOR_TYPES if x in kinds]
+    return [x.key for x in SENSOR_DESCRIPTIONS if x.key in types]
 
 
 def _gen_entities(
@@ -67,25 +94,37 @@ def _gen_entities(
     """Generate entities."""
     entities = []
 
-    kinds = _fix_kinds(
-        config.get(CONF_MONITORED_CONDITIONS, SENSOR_TYPES.keys()),
+    types = _fix_types(
+        config.get(CONF_MONITORED_CONDITIONS, [x.key for x in SENSOR_DESCRIPTIONS]),
         warn=warn,
     )
 
-    for kind in kinds:
-        entities.append(GismeteoSensor(location_name, kind, coordinator))
+    entities.extend(
+        [
+            GismeteoSensor(coordinator, desc, location_name)
+            for desc in SENSOR_DESCRIPTIONS
+            if desc.key in types
+        ]
+    )
 
     days = config.get(CONF_FORECAST_DAYS)
     if days is not None:
         for day in range(days + 1):
-            for kind in kinds:
-                entities.append(GismeteoSensor(location_name, kind, coordinator, day))
+            entities.extend(
+                [
+                    GismeteoSensor(coordinator, desc, location_name, day)
+                    for desc in SENSOR_DESCRIPTIONS
+                    if desc.key in types
+                ]
+            )
 
     return entities
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, config_entry: ConfigEntry, async_add_entities
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ):
     """Add Gismeteo sensor entities."""
     entities = []
@@ -94,7 +133,7 @@ async def async_setup_entry(
         for uid, cfg in hass.data[DOMAIN_YAML].items():
             cfg = _convert_yaml_config(cfg)
 
-            if cfg.get(CONF_PLATFORM_FORMAT.format(SENSOR), False) is False:
+            if cfg.get(CONF_PLATFORM_FORMAT.format(Platform.SENSOR), False) is False:
                 continue  # pragma: no cover
 
             location_name = cfg.get(CONF_NAME, deslugify(uid))
@@ -107,7 +146,7 @@ async def async_setup_entry(
         config = config_entry.data.copy()  # type: ConfigType
         config.update(config_entry.options)
 
-        if config.get(CONF_PLATFORM_FORMAT.format(SENSOR), False) is False:
+        if config.get(CONF_PLATFORM_FORMAT.format(Platform.SENSOR), False) is False:
             return  # pragma: no cover
 
         location_name = config[CONF_NAME]
@@ -115,70 +154,51 @@ async def async_setup_entry(
 
         entities.extend(_gen_entities(location_name, coordinator, config, False))
 
-    async_add_entities(entities, False)
+    async_add_entities(entities)
 
 
-class GismeteoSensor(GismeteoEntity):
+class GismeteoSensor(GismeteoEntity, SensorEntity):
     """Implementation of an Gismeteo sensor."""
+
+    _attr_attribution = ATTRIBUTION
+    _attr_has_entity_name = True
 
     def __init__(
         self,
-        location_name: str,
-        kind: str,
         coordinator: GismeteoDataUpdateCoordinator,
+        description: SensorEntityDescription,
+        location_name: str,
         day: int | None = None,
     ):
         """Initialize the sensor."""
-        super().__init__(location_name, coordinator)
+        super().__init__(coordinator, location_name)
 
-        self._kind = kind
+        self.entity_description = description
+        # if day:
+        # self.entity_description.translation_key += "-day"
+
+        self._attr_unique_id = (
+            f"{coordinator.unique_id}-{description.key}"
+            if day is None
+            else f"{coordinator.unique_id}-{day}-{description.key}"
+        ).lower()
+        self._attr_translation_placeholders = {
+            "location_name": location_name,
+            "type": description.key,
+            "day": day,
+        }
+        self._attr_extra_state_attributes = self._gismeteo.attributes
+
         self._day = day
 
-    @property
-    def unique_id(self):
-        """Return a unique_id for this entity."""
-        return (
-            f"{self.coordinator.unique_id}-{self._kind}"
-            if self._day is None
-            else f"{self.coordinator.unique_id}-{self._day}-{self._kind}"
-        ).lower()
-
-    @property
-    def name(self):
-        """Return the name of the sensor."""
-        name = f"{self._location_name} {SENSOR_TYPES[self._kind][ATTR_NAME]}"
-        if self._day is not None:
-            name += f" {self._day}d"
-        return name
-
-    @property
-    def state(self):
-        """Return the state."""
+    @cached_property
+    def native_value(self) -> StateType | date | datetime | Decimal:
+        """Return the value reported by the sensor."""
         try:
-            return getattr(self._gismeteo, self._kind)()
+            return getattr(self._gismeteo, self.entity_description.key)()
 
         except KeyError:  # pragma: no cover
-            _LOGGER.warning("Condition is currently not available: %s", self._kind)
+            _LOGGER.warning(
+                "Condition is currently not available: %s", self.entity_description.key
+            )
             return None
-
-    @property
-    def unit_of_measurement(self) -> str | None:
-        """Return the unit of measurement of this entity, if any."""
-        return SENSOR_TYPES[self._kind].get(ATTR_UNIT_OF_MEASUREMENT)
-
-    @property
-    def icon(self) -> str | None:
-        """Return the icon to use in the frontend, if any."""
-        return SENSOR_TYPES[self._kind].get(ATTR_ICON)
-
-    @property
-    def device_class(self) -> str | None:
-        """Return the device_class."""
-        return SENSOR_TYPES[self._kind].get(ATTR_DEVICE_CLASS)
-
-    @property
-    def device_state_attributes(self) -> dict[str, Any] | None:
-        """Return the state attributes."""
-        attrs = self._gismeteo.attributes.copy()
-        attrs[ATTR_ATTRIBUTION] = ATTRIBUTION
-        return attrs

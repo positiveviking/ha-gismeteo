@@ -10,15 +10,12 @@ https://github.com/Limych/ha-gismeteo/
 from datetime import timedelta
 from typing import Final
 
-from homeassistant.components.sensor import DOMAIN as SENSOR, SensorDeviceClass
-from homeassistant.components.weather import ATTR_FORECAST_CONDITION, DOMAIN as WEATHER
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
+from homeassistant.components.weather import ATTR_FORECAST_CONDITION
 from homeassistant.const import (
-    ATTR_DEVICE_CLASS,
-    ATTR_ICON,
-    ATTR_NAME,
-    ATTR_UNIT_OF_MEASUREMENT,
     DEGREE,
     PERCENTAGE,
+    Platform,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
@@ -45,7 +42,7 @@ If you have ANY issues with this you need to open an issue here:
 """
 
 # Platforms
-PLATFORMS: Final = [SENSOR, WEATHER]
+PLATFORMS: Final = [Platform.SENSOR, Platform.WEATHER]
 
 # Configuration and options
 CONF_CACHE_DIR: Final = "cache_dir"
@@ -76,7 +73,9 @@ ATTR_WEATHER_STORM: Final = "storm"
 ATTR_WEATHER_GEOMAGNETIC_FIELD: Final = "gm_field"
 ATTR_WEATHER_PHENOMENON: Final = "phenomenon"
 ATTR_WEATHER_WATER_TEMPERATURE: Final = "water_temperature"
-ATTR_WEATHER_ALLERGY_BIRCH = "allergy_birch"
+ATTR_WEATHER_POLLEN_BIRCH = "pollen_birch"
+ATTR_WEATHER_POLLEN_GRASS = "pollen_grass"
+ATTR_WEATHER_POLLEN_RAGWEED = "pollen_ragweed"
 ATTR_WEATHER_UV_INDEX = "uv_index"
 #
 ATTR_FORECAST_HUMIDITY: Final = "humidity"
@@ -91,6 +90,30 @@ ATTR_FORECAST_PHENOMENON: Final = ATTR_WEATHER_PHENOMENON
 #
 ATTR_LAT: Final = "lat"
 ATTR_LON: Final = "lon"
+
+TYPE_WEATHER: Final = "weather"  # Deprecated
+TYPE_CONDITION: Final = "condition"
+TYPE_TEMPERATURE: Final = "temperature"
+TYPE_TEMPERATURE_FEELS_LIKE: Final = "temperature_feels_like"  # Deprecated
+TYPE_APPARENT_TEMPERATURE: Final = "apparent_temperature"
+TYPE_HUMIDITY: Final = "humidity"
+TYPE_PRESSURE: Final = "pressure"
+TYPE_WIND_SPEED: Final = "wind_speed"
+TYPE_WIND_BEARING: Final = "wind_bearing"
+TYPE_CLOUDS: Final = "clouds"  # Deprecated
+TYPE_CLOUD_COVERAGE: Final = "cloud_coverage"
+TYPE_RAIN: Final = "rain"  # Deprecated
+TYPE_RAIN_AMOUNT: Final = "rain_amount"
+TYPE_SNOW: Final = "snow"  # Deprecated
+TYPE_SNOW_AMOUNT: Final = "snow_amount"
+TYPE_STORM: Final = "storm"
+TYPE_GEOMAGNETIC: Final = "geomagnetic"  # Deprecated
+TYPE_GEOMAGNETIC_FIELD: Final = "geomagnetic_field"
+TYPE_WATER_TEMPERATURE: Final = "water_temperature"
+TYPE_UV_INDEX: Final = "uv_index"
+TYPE_POLLEN_BIRCH: Final = "pollen_birch"
+TYPE_POLLEN_GRASS: Final = "pollen_grass"
+TYPE_POLLEN_RAGWEED: Final = "pollen_ragweed"
 
 COORDINATOR: Final = "coordinator"
 UNDO_UPDATE_LISTENER: Final = "undo_update_listener"
@@ -131,97 +154,222 @@ CONDITION_FOG_CLASSES: Final = [
     528,
 ]
 
-MMHG2HPA: Final = 1.333223684
-MS2KMH: Final = 3.6
-
 PRECIPITATION_AMOUNT: Final = (0, 2, 6, 16)
 
 DEVICE_CLASS_TPL: Final = DOMAIN + "__{}"
 
-SENSOR_TYPES: Final = {
-    "weather": {},  # => condition
-    "condition": {
-        ATTR_DEVICE_CLASS: DEVICE_CLASS_TPL.format("condition"),
-        ATTR_ICON: None,
-        ATTR_NAME: "Condition",
-        ATTR_UNIT_OF_MEASUREMENT: None,
-    },
-    "temperature": {
-        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        ATTR_ICON: None,
-        ATTR_NAME: "Temperature",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfTemperature.CELSIUS,
-    },
-    "temperature_feels_like": {
-        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        ATTR_ICON: None,
-        ATTR_NAME: "Temperature Feels Like",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfTemperature.CELSIUS,
-    },
-    "humidity": {
-        ATTR_DEVICE_CLASS: SensorDeviceClass.HUMIDITY,
-        ATTR_ICON: None,
-        ATTR_NAME: "Humidity",
-        ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE,
-    },
-    "pressure": {
-        ATTR_DEVICE_CLASS: SensorDeviceClass.PRESSURE,
-        ATTR_ICON: None,
-        ATTR_NAME: "Pressure",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfPressure.HPA,
-    },
-    "wind_speed": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:weather-windy",
-        ATTR_NAME: "Wind speed",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfSpeed.METERS_PER_SECOND,
-    },
-    "wind_bearing": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:weather-windy",
-        ATTR_NAME: "Wind bearing",
-        ATTR_UNIT_OF_MEASUREMENT: DEGREE,
-    },
-    "clouds": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:weather-partly-cloudy",
-        ATTR_NAME: "Cloud coverage",
-        ATTR_UNIT_OF_MEASUREMENT: PERCENTAGE,
-    },
-    "rain": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:weather-rainy",
-        ATTR_NAME: "Rain",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfLength.MILLIMETERS,
-    },
-    "snow": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:weather-snowy",
-        ATTR_NAME: "Snow",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfLength.MILLIMETERS,
-    },
-    "storm": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:weather-lightning",
-        ATTR_NAME: "Storm",
-        ATTR_UNIT_OF_MEASUREMENT: None,
-    },
-    "geomagnetic": {
-        ATTR_DEVICE_CLASS: None,
-        ATTR_ICON: "mdi:magnet-on",
-        ATTR_NAME: "Geomagnetic field",
-        ATTR_UNIT_OF_MEASUREMENT: "",
-    },
-    "water_temperature": {
-        ATTR_DEVICE_CLASS: SensorDeviceClass.TEMPERATURE,
-        ATTR_ICON: None,
-        ATTR_NAME: "Water Temperature",
-        ATTR_UNIT_OF_MEASUREMENT: UnitOfTemperature.CELSIUS,
-    },
-}
-FORECAST_SENSOR_TYPE: Final = {
-    ATTR_DEVICE_CLASS: DEVICE_CLASS_TPL.format("condition"),
-    ATTR_ICON: None,
-    ATTR_NAME: "3h Forecast",
-    ATTR_UNIT_OF_MEASUREMENT: None,
-}
+SENSOR_DESCRIPTIONS: Final = (
+    SensorEntityDescription(
+        key=TYPE_CONDITION,
+        translation_key="condition",
+        has_entity_name=True,
+        device_class=DEVICE_CLASS_TPL.format("condition"),
+    ),
+    SensorEntityDescription(
+        key=TYPE_TEMPERATURE,
+        translation_key="temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+    ),
+    SensorEntityDescription(
+        key=TYPE_APPARENT_TEMPERATURE,
+        translation_key="apparent_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_HUMIDITY,
+        translation_key="humidity",
+        device_class=SensorDeviceClass.HUMIDITY,
+        native_unit_of_measurement=PERCENTAGE,
+    ),
+    SensorEntityDescription(
+        key=TYPE_PRESSURE,
+        translation_key="pressure",
+        device_class=SensorDeviceClass.PRESSURE,
+        native_unit_of_measurement=UnitOfPressure.HPA,
+    ),
+    SensorEntityDescription(
+        key=TYPE_WIND_SPEED,
+        translation_key="wind_speed",
+        icon="mdi:weather-windy",
+        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_WIND_BEARING,
+        translation_key="wind_bearing",
+        icon="mdi:weather-windy",
+        native_unit_of_measurement=DEGREE,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_CLOUD_COVERAGE,
+        translation_key="cloud_coverage",
+        icon="mdi:weather-partly-cloudy",
+        native_unit_of_measurement=PERCENTAGE,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_RAIN_AMOUNT,
+        translation_key="rain_amount",
+        icon="mdi:weather-rainy",
+        native_unit_of_measurement=UnitOfLength.MILLIMETERS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_SNOW_AMOUNT,
+        translation_key="snow_amount",
+        icon="mdi:weather-snowy",
+        native_unit_of_measurement=UnitOfLength.MILLIMETERS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_STORM,
+        translation_key="storm",
+        icon="mdi:weather-lightning",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_GEOMAGNETIC_FIELD,
+        translation_key="geomagnetic_field",
+        icon="mdi:magnet-on",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_WATER_TEMPERATURE,
+        translation_key="water_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_UV_INDEX,
+        translation_key="uv_index",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_POLLEN_BIRCH,
+        translation_key="pollen_birch",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_POLLEN_GRASS,
+        translation_key="pollen_grass",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_POLLEN_RAGWEED,
+        translation_key="pollen_ragweed",
+        entity_registry_enabled_default=False,
+    ),
+)
+
+FORECAST_SENSOR_DESCRIPTIONS: Final = (
+    SensorEntityDescription(
+        key=TYPE_CONDITION,
+        translation_key="condition_forecast",
+        has_entity_name=True,
+        device_class=DEVICE_CLASS_TPL.format("condition"),
+    ),
+    SensorEntityDescription(
+        key=TYPE_TEMPERATURE,
+        translation_key="temperature_forecast",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+    ),
+    SensorEntityDescription(
+        key=TYPE_APPARENT_TEMPERATURE,
+        translation_key="apparent_temperature_forecast",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_HUMIDITY,
+        translation_key="humidity_forecast",
+        device_class=SensorDeviceClass.HUMIDITY,
+        native_unit_of_measurement=PERCENTAGE,
+    ),
+    SensorEntityDescription(
+        key=TYPE_PRESSURE,
+        translation_key="pressure_forecast",
+        device_class=SensorDeviceClass.PRESSURE,
+        native_unit_of_measurement=UnitOfPressure.HPA,
+    ),
+    SensorEntityDescription(
+        key=TYPE_WIND_SPEED,
+        translation_key="wind_speed_forecast",
+        icon="mdi:weather-windy",
+        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_WIND_BEARING,
+        translation_key="wind_bearing_forecast",
+        icon="mdi:weather-windy",
+        native_unit_of_measurement=DEGREE,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_CLOUD_COVERAGE,
+        translation_key="cloud_coverage_forecast",
+        icon="mdi:weather-partly-cloudy",
+        native_unit_of_measurement=PERCENTAGE,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_RAIN_AMOUNT,
+        translation_key="rain_amount_forecast",
+        icon="mdi:weather-rainy",
+        native_unit_of_measurement=UnitOfLength.MILLIMETERS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_SNOW_AMOUNT,
+        translation_key="snow_amount_forecast",
+        icon="mdi:weather-snowy",
+        native_unit_of_measurement=UnitOfLength.MILLIMETERS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_STORM,
+        translation_key="storm_forecast",
+        icon="mdi:weather-lightning",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_GEOMAGNETIC_FIELD,
+        translation_key="geomagnetic_field_forecast",
+        icon="mdi:magnet-on",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_WATER_TEMPERATURE,
+        translation_key="water_temperature_forecast",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_UV_INDEX,
+        translation_key="uv_index_forecast",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_POLLEN_BIRCH,
+        translation_key="pollen_birch_forecast",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_POLLEN_GRASS,
+        translation_key="pollen_grass_forecast",
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
+        key=TYPE_POLLEN_RAGWEED,
+        translation_key="pollen_ragweed_forecast",
+        entity_registry_enabled_default=False,
+    ),
+)

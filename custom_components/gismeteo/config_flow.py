@@ -1,32 +1,29 @@
 #  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
-"""
-The Gismeteo component.
+"""The Gismeteo component.
 
 For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
-import asyncio
 import logging
 
-import homeassistant.helpers.config_validation as cv
-import voluptuous as vol
 from aiohttp import ClientConnectorError, ClientError
 from async_timeout import timeout
+import voluptuous as vol
+
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_MODE, CONF_NAME
+from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME, Platform
 from homeassistant.core import callback
+import homeassistant.helpers.config_validation as cv
 
 from . import _get_api_client  # pylint: disable=unused-import
 from .api import ApiError
 from .const import (  # pylint: disable=unused-import
     CONF_PLATFORM_FORMAT,
     DOMAIN,
-    FORECAST_MODE_DAILY,
-    FORECAST_MODE_HOURLY,
     PLATFORMS,
 )
 
@@ -67,7 +64,7 @@ class GismeteoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 async with timeout(10):
                     gismeteo = _get_api_client(self.hass, user_input)
                     await gismeteo.async_update()
-            except (ApiError, ClientConnectorError, asyncio.TimeoutError, ClientError):
+            except (TimeoutError, ApiError, ClientConnectorError, ClientError):
                 self._errors["base"] = "cannot_connect"
             else:
                 return self.async_create_entry(
@@ -134,15 +131,8 @@ class GismeteoOptionsFlowHandler(config_entries.OptionsFlow):
                 default=self.options.get(CONF_PLATFORM_FORMAT.format(x), True),
             ): bool
             for x in sorted(PLATFORMS)
+            if x != Platform.WEATHER
         }
-        schema.update(
-            {
-                vol.Required(
-                    CONF_MODE,
-                    default=self.options.get(CONF_MODE, FORECAST_MODE_HOURLY),
-                ): vol.In([FORECAST_MODE_HOURLY, FORECAST_MODE_DAILY]),
-            }
-        )
         return self.async_show_form(step_id="user", data_schema=vol.Schema(schema))
 
     async def _update_options(self):
