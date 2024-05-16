@@ -11,6 +11,8 @@
     "documentation": "https://github.com/Limych/ha-gismeteo",
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/Limych/ha-gismeteo/issues",
-    "requirements": [],
+    "requirements": [
+        "beautifulsoup4~=4.12"
+    ],
     "version": "3.0.0.dev0"
 }
