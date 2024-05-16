@@ -1,7 +1,6 @@
-#  Copyright (c) 2019-2022, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
-
-# pylint: disable=redefined-outer-name,protected-access
+# pylint: disable=protected-access,redefined-outer-name
 """Tests for Cache controller."""
+
 import os
 import random
 from time import time
@@ -106,10 +105,10 @@ def test_is_cached(config, cache_dir):
     config["clean_dir"] = False
     cache = Cache(config)
 
-    for i in cache_dir["old"].keys():
+    for i in cache_dir["old"]:
         assert cache.is_cached(i) is False
 
-    for i in cache_dir["new"].keys():
+    for i in cache_dir["new"]:
         assert cache.is_cached(i) is True
 
     for _ in range(8):
@@ -121,7 +120,7 @@ def test_read_cache(config, cache_dir):
     """Cache controller tests."""
     cache = Cache(config)
 
-    for i in cache_dir["old"].keys():
+    for i in cache_dir["old"]:
         assert cache.read_cache(i) is None
 
     for i, con in cache_dir["new"].items():

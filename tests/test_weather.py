@@ -1,44 +1,28 @@
-"""Tests for GisMeteo integration."""
+# pylint: disable=protected-access,redefined-outer-name
+"""Tests for Gismeteo integration."""
 from unittest.mock import Mock
 
-from pytest_homeassistant_custom_component.common import assert_setup_component
-
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
-from custom_components.gismeteo.const import DOMAIN
+from custom_components.gismeteo.const import ATTRIBUTION
 from custom_components.gismeteo.weather import GismeteoWeather
-from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
-from homeassistant.const import CONF_NAME, CONF_PLATFORM
+from homeassistant.const import UnitOfPressure, UnitOfSpeed, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 
-from tests.const import MOCK_CONFIG, MOCK_UNIQUE_ID
+from tests.const import FAKE_UNIQUE_ID
 
 
 async def test_entity_initialization(hass: HomeAssistant):
-    """Test sensor initialization."""
+    """Test entity initialization."""
     mock_api = Mock()
     mock_api.condition = Mock(return_value="asd")
+    mock_api.attributes = {}
 
-    coordinator = GismeteoDataUpdateCoordinator(hass, MOCK_UNIQUE_ID, mock_api)
-    entity = GismeteoWeather("Test", coordinator, MOCK_CONFIG)
+    coordinator = GismeteoDataUpdateCoordinator(hass, FAKE_UNIQUE_ID, mock_api)
+    entity = GismeteoWeather(coordinator, "Test")
 
-    assert entity.name == "Test"
-    assert entity.unique_id == MOCK_UNIQUE_ID
-
-
-async def test_async_setup_platform(hass: HomeAssistant, gismeteo_api):
-    """Test platform setup."""
-    config = {
-        WEATHER_DOMAIN: {
-            CONF_PLATFORM: DOMAIN,
-            CONF_NAME: "Office",
-        },
-    }
-
-    with assert_setup_component(1, WEATHER_DOMAIN):
-        assert await async_setup_component(hass, WEATHER_DOMAIN, config)
-    await hass.async_block_till_done()
-
-    state = hass.states.get(f"{WEATHER_DOMAIN}.office")
-    assert state is not None
-    assert state.state == "snowy"
+    assert entity.unique_id == FAKE_UNIQUE_ID
+    assert entity.attribution == ATTRIBUTION
+    assert entity.condition == "asd"
+    assert entity.native_temperature_unit == UnitOfTemperature.CELSIUS
+    assert entity.native_pressure_unit == UnitOfPressure.MMHG
+    assert entity.native_wind_speed_unit == UnitOfSpeed.METERS_PER_SECOND

@@ -1,16 +1,34 @@
 """Constants for tests."""
-from typing import Final
 
-from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME
+from custom_components.gismeteo.const import CONF_PLATFORM_FORMAT
+from homeassistant.const import (
+    CONF_LATITUDE,
+    CONF_LONGITUDE,
+    CONF_NAME,
+    CONF_SENSORS,
+    Platform,
+)
 
-MOCK_UNIQUE_ID: Final = "test_id"
-MOCK_API_ID: Final = "test_api_id"
+FAKE_NAME = "Home"
+FAKE_UNIQUE_ID = "test_id"
+FAKE_LATITUDE = 55.55
+FAKE_LONGITUDE = 122.12
 
-MOCK_LATITUDE: Final = 55.55
-MOCK_LONGITUDE: Final = 122.12
+FAKE_CONFIG = {
+    CONF_NAME: FAKE_NAME,
+    CONF_LATITUDE: FAKE_LATITUDE,
+    CONF_LONGITUDE: FAKE_LONGITUDE,
+}
 
-MOCK_CONFIG: Final = {
-    CONF_NAME: "Home",
-    CONF_LATITUDE: MOCK_LATITUDE,
-    CONF_LONGITUDE: MOCK_LONGITUDE,
+FAKE_CONFIG_OPTIONS = {
+    CONF_PLATFORM_FORMAT.format(Platform.SENSOR): True,
+}
+
+FAKE_CONFIG_YAML = {
+    "home": {
+        CONF_NAME: FAKE_NAME,
+        CONF_LATITUDE: FAKE_LATITUDE,
+        CONF_LONGITUDE: FAKE_LONGITUDE,
+        CONF_SENSORS: {},
+    },
 }

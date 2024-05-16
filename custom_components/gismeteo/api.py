@@ -1,4 +1,4 @@
-#  Copyright (c) 2019-2022, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2024, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
 """The Gismeteo component.
@@ -8,15 +8,15 @@ https://github.com/Limych/ha-gismeteo/
 """
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timedelta
 from http import HTTPStatus
 import logging
 import math
-import time
-from typing import Any, Dict, Optional
+from typing import Any
 import xml.etree.ElementTree as etree  # type: ignore
 
 from aiohttp import ClientSession
+from bs4 import BeautifulSoup
 
 from homeassistant.components.weather import (
     ATTR_CONDITION_CLEAR_NIGHT,
@@ -32,52 +32,50 @@ from homeassistant.components.weather import (
     ATTR_CONDITION_SUNNY,
     ATTR_CONDITION_WINDY,
     ATTR_CONDITION_WINDY_VARIANT,
+    ATTR_FORECAST_CLOUD_COVERAGE,
     ATTR_FORECAST_CONDITION,
-    ATTR_FORECAST_PRECIPITATION,
-    ATTR_FORECAST_TEMP,
+    ATTR_FORECAST_HUMIDITY,
+    ATTR_FORECAST_IS_DAYTIME,
+    ATTR_FORECAST_NATIVE_APPARENT_TEMP,
+    ATTR_FORECAST_NATIVE_PRECIPITATION,
+    ATTR_FORECAST_NATIVE_PRESSURE,
+    ATTR_FORECAST_NATIVE_TEMP,
+    ATTR_FORECAST_NATIVE_TEMP_LOW,
+    ATTR_FORECAST_NATIVE_WIND_GUST_SPEED,
+    ATTR_FORECAST_NATIVE_WIND_SPEED,
     ATTR_FORECAST_TEMP_LOW,
     ATTR_FORECAST_TIME,
+    ATTR_FORECAST_UV_INDEX,
     ATTR_FORECAST_WIND_BEARING,
-    ATTR_FORECAST_WIND_SPEED,
-    ATTR_WEATHER_HUMIDITY,
-    ATTR_WEATHER_PRESSURE,
-    ATTR_WEATHER_TEMPERATURE,
-    ATTR_WEATHER_WIND_BEARING,
-    ATTR_WEATHER_WIND_SPEED,
+    Forecast,
 )
-from homeassistant.const import ATTR_ID, ATTR_NAME, STATE_UNKNOWN
-from homeassistant.util import dt as dt_util
+from homeassistant.const import ATTR_ID, ATTR_LATITUDE, ATTR_LONGITUDE, STATE_UNKNOWN
+from homeassistant.util import Throttle, dt as dt_util
 
 from .cache import Cache
 from .const import (
-    ATTR_FORECAST_CLOUDINESS,
     ATTR_FORECAST_GEOMAGNETIC_FIELD,
-    ATTR_FORECAST_HUMIDITY,
+    ATTR_FORECAST_IS_STORM,
+    ATTR_FORECAST_PHENOMENON,
+    ATTR_FORECAST_POLLEN_BIRCH,
+    ATTR_FORECAST_POLLEN_GRASS,
+    ATTR_FORECAST_POLLEN_RAGWEED,
     ATTR_FORECAST_PRECIPITATION_AMOUNT,
     ATTR_FORECAST_PRECIPITATION_INTENSITY,
     ATTR_FORECAST_PRECIPITATION_TYPE,
-    ATTR_FORECAST_PRESSURE,
-    ATTR_FORECAST_STORM,
-    ATTR_LAST_UPDATED,
+    ATTR_FORECAST_ROAD_CONDITION,
+    ATTR_FORECAST_WATER_TEMPERATURE,
+    ATTR_FORECAST_WIND_BEARING_LABEL,
     ATTR_SUNRISE,
     ATTR_SUNSET,
-    ATTR_WEATHER_CLOUDINESS,
-    ATTR_WEATHER_CONDITION,
-    ATTR_WEATHER_GEOMAGNETIC_FIELD,
-    ATTR_WEATHER_PHENOMENON,
-    ATTR_WEATHER_PRECIPITATION_AMOUNT,
-    ATTR_WEATHER_PRECIPITATION_INTENSITY,
-    ATTR_WEATHER_PRECIPITATION_TYPE,
-    ATTR_WEATHER_STORM,
-    ATTR_WEATHER_WATER_TEMPERATURE,
     CONDITION_FOG_CLASSES,
     ENDPOINT_URL,
-    FORECAST_MAX_CACHE_INTERVAL,
     FORECAST_MODE_DAILY,
     FORECAST_MODE_HOURLY,
-    LOCATION_MAX_CACHE_INTERVAL,
-    MMHG2HPA,
-    MS2KMH,
+    PARSED_UPDATE_INTERVAL,
+    PARSER_URL_FORMAT,
+    PARSER_USER_AGENT,
+    PRECIPITATION_AMOUNT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -101,52 +99,65 @@ class ApiError(Exception):
         self.status = status
 
 
+class GismeteoForecast(Forecast, total=False):
+    """Typed weather forecast dict.
+
+    All attributes are in native units.
+    """
+
+    precipitation_type: str | None
+    precipitation_intensity: str | None
+    wind_bearing_label: str | None
+    phenomenon: str | None
+    pollen_birch: bool | None
+    pollen_grass: bool | None
+    pollen_ragweed: bool | None
+    road_condition: str | None
+
+
 class GismeteoApiClient:
     """Gismeteo API implementation."""
 
     def __init__(
         self,
         session: ClientSession,
-        latitude: Optional[float] = None,
-        longitude: Optional[float] = None,
-        location_key: Optional[int] = None,
-        mode=FORECAST_MODE_HOURLY,
-        params: Optional[dict] = None,
-    ):
+        location_key: int | None = None,
+        latitude: float | None = None,
+        longitude: float | None = None,
+        params: dict | None = None,
+    ) -> None:
         """Initialize."""
         params = params or {}
 
-        if not location_key:
-            if not self._valid_coordinates(latitude, longitude):
-                raise InvalidCoordinatesError("Your coordinates are invalid.")
-
-        _LOGGER.debug("Place coordinates: %s, %s", latitude, longitude)
-        _LOGGER.debug("Forecast mode: %s", mode)
-
         self._session = session
-        self._mode = mode
         self._cache = Cache(params) if params.get("cache_dir") is not None else None
-        self._latitude = latitude
-        self._longitude = longitude
-        self._attributes: Dict[str, Any] = {
-            ATTR_ID: location_key,
-        }
+        self._attributes = {}
 
-        self._last_updated = None
+        if location_key is not None:
+            _LOGGER.debug("Place location ID: %s", location_key)
+            self._attributes = {
+                ATTR_ID: location_key,
+            }
+        elif self._valid_coordinates(latitude, longitude):
+            _LOGGER.debug("Place coordinates: %s, %s", latitude, longitude)
+            self._attributes = {
+                ATTR_LATITUDE: latitude,
+                ATTR_LONGITUDE: longitude,
+            }
+        else:
+            raise InvalidCoordinatesError("Your coordinates are invalid.")
+
         self._current = {}
-        self._forecast = []
-        self._timezone = (
-            dt_util.get_time_zone(params.get("timezone"))
-            if params.get("timezone") is not None
-            else dt_util.DEFAULT_TIME_ZONE
-        )
+        self._forecast_hourly = []
+        self._forecast_daily = []
+        self._parsed = {}
 
     @staticmethod
     def _valid_coordinates(latitude: float, longitude: float) -> bool:
         """Return True if coordinates are valid."""
         try:
-            assert isinstance(latitude, (int, float)) and isinstance(
-                longitude, (int, float)
+            assert isinstance(latitude, int | float) and isinstance(
+                longitude, int | float
             )
             assert abs(latitude) <= 90 and abs(longitude) <= 180
         except (AssertionError, TypeError):
@@ -154,91 +165,143 @@ class GismeteoApiClient:
         return True
 
     @property
-    def last_updated(self):
-        """Return timestamp of last update of weather data."""
-        return self._last_updated
+    def attributes(self) -> dict[str, Any] | None:
+        """Return an attributes."""
+        return self._attributes
 
     @property
-    def current(self):
+    def current_data(self) -> dict[str, Any]:
         """Return current weather data."""
         return self._current
 
-    @property
-    def latitude(self):
-        """Return weather station latitude."""
-        return self._latitude
+    def forecast_data(self, pos: int, mode: str = FORECAST_MODE_HOURLY):
+        """Return forecast data."""
+        forecast = []
+        now = dt_util.now()
+        for data in (
+            self._forecast_hourly
+            if mode == FORECAST_MODE_HOURLY
+            else self._forecast_daily
+        ):
+            fc_time = data.get(ATTR_FORECAST_TIME)
+            if fc_time is None:
+                continue  # pragma: no cover
 
-    @property
-    def longitude(self):
-        """Return weather station longitude."""
-        return self._longitude
+            if fc_time < now:
+                forecast = [data]
+            else:
+                forecast.append(data)
 
-    @property
-    def attributes(self):
-        """Return forecast attributes."""
-        return self._attributes
+        try:
+            return forecast[pos]
+
+        except IndexError:
+            return {}
 
     async def _async_get_data(
-        self, url: str, cache_fname=None, max_cache_time=0
+        self, url: str, cache_fname: str | None = None, as_browser: bool = False
     ) -> str:
         """Retreive data from Gismeteo API and cache results."""
         _LOGGER.debug("Requesting URL %s", url)
 
-        data = None
-        data_cached = None
-        data_is_cached = False
-
         if self._cache and cache_fname is not None:
             cache_fname += ".xml"
-            data_cached = self._cache.read_cache(cache_fname, max_cache_time)
-            data_is_cached = self._cache.is_cached(cache_fname)
+            if self._cache.is_cached(cache_fname):
+                _LOGGER.debug("Cached response used")
+                return self._cache.read_cache(cache_fname)
 
-        if not data_is_cached:
-            async with self._session.get(url) as resp:
-                if resp.status != HTTPStatus.OK:
-                    _LOGGER.error("Invalid response from Gismeteo API: %s", resp.status)
-                else:
-                    _LOGGER.debug(
-                        "Data retrieved from %s, status: %s", url, resp.status
-                    )
-                    data = await resp.text()
+        headers = {}
+        if as_browser:
+            headers["User-Agent"] = PARSER_USER_AGENT
 
-        if not data and data_cached:
-            _LOGGER.debug("Cached response used")
-            data = data_cached
-        elif self._cache and cache_fname is not None and data:
+        async with self._session.get(url, headers=headers) as resp:
+            if resp.status != HTTPStatus.OK:
+                raise ApiError(f"Invalid response from Gismeteo API: {resp.status}")
+            _LOGGER.debug("Data retrieved from %s, status: %s", url, resp.status)
+            data = await resp.text()
+
+        if self._cache and cache_fname is not None and data:
             self._cache.save_cache(cache_fname, data)
 
         return data
 
-    async def async_get_location(self):
+    async def async_update_location(self) -> None:
         """Retreive location data from Gismeteo."""
+        if (
+            self._attributes[ATTR_LATITUDE] == 0
+            and self._attributes[ATTR_LONGITUDE] == 0
+        ):
+            return
+
         url = (
             ENDPOINT_URL
-            + f"/cities/?lat={self._latitude}&lng={self._longitude}&count=1&lang=en"
+            + f"/cities/?lat={self._attributes[ATTR_LATITUDE]}&lng={self._attributes[ATTR_LONGITUDE]}&count=1&lang=en"
         )
-        cache_fname = f"location_{self._latitude}_{self._longitude}"
+        cache_fname = f"location_{self._attributes[ATTR_LATITUDE]}_{self._attributes[ATTR_LONGITUDE]}"
 
-        response = await self._async_get_data(
-            url, cache_fname, LOCATION_MAX_CACHE_INTERVAL.total_seconds()
-        )
+        response = await self._async_get_data(url, cache_fname)
         try:
             xml = etree.fromstring(response)
             item = xml.find("item")
-            lon = self._get(item, "lng", float)
             self._attributes = {
                 ATTR_ID: self._get(item, "id", int),
-                ATTR_NAME: self._get(item, "n"),
+                ATTR_LATITUDE: self._get(item, "lat", float),
+                ATTR_LONGITUDE: self._get(item, "lng", float),
             }
-            self._latitude = self._get(item, "lat", float)
-            self._longitude = (lon - 360) if lon > 180 else lon
+
         except (etree.ParseError, TypeError, AttributeError) as ex:
             raise ApiError(
                 "Can't retrieve location data! Invalid server response."
             ) from ex
 
+    async def async_get_forecast(self):
+        """Get the latest forecast data from Gismeteo API."""
+        if ATTR_ID not in self.attributes:
+            await self.async_update_location()
+
+            if ATTR_ID not in self.attributes:
+                return ""
+
+        url = f"{ENDPOINT_URL}/forecast/?city={self.attributes[ATTR_ID]}&lang=en"
+        cache_fname = f"forecast_{self.attributes[ATTR_ID]}"
+
+        return await self._async_get_data(url, cache_fname)
+
+    async def async_get_parsed(self) -> dict[str, Any]:
+        """Retrieve data from Gismeteo main site."""
+        forecast = await self.async_get_forecast()
+        location = etree.fromstring(forecast).find("location")
+        location_uri = str(location.get("nowcast_url")).strip("/")[8:]
+        tzone = int(location.get("tzone"))
+        today = self._get_utime(location.get("cur_time")[:10], tzone)
+
+        data = {}
+        url = PARSER_URL_FORMAT.format(location_uri)
+        cache_fname = f"forecast_parsed_{self.attributes[ATTR_ID]}"
+
+        response = await self._async_get_data(url, cache_fname, as_browser=True)
+
+        parser = BeautifulSoup(response, "html.parser")
+
+        try:
+            for row in parser.find_all("div", {"class": "widget-row"}):
+                if "data-row" not in row.attrs:
+                    continue
+                metric = row["data-row"]
+                for day, row_data in enumerate(
+                    row.find_all("div", {"class": "row-item"})
+                ):
+                    ts = today + timedelta(days=day)
+                    data.setdefault(ts, {})
+                    data[ts][metric] = next(row_data.stripped_strings, None)
+
+            return data
+
+        except AttributeError:  # pragma: no cover
+            return {}
+
     @staticmethod
-    def _get(var: dict, ind: str, func: Optional[Callable] = None) -> Any:
+    def _get(var: dict, ind: str, func: Callable | None = None) -> Any:
         res = var.get(ind)
         if func is not None:
             try:
@@ -247,23 +310,18 @@ class GismeteoApiClient:
                 return None
         return res
 
-    @staticmethod
-    def _is_day(testing_time, sunrise_time, sunset_time):
-        """Return True if sun are shining."""
-        return sunrise_time < testing_time < sunset_time
-
-    def condition(self, src=None):
-        """Return the current condition."""
+    def condition(self, src=None, mode: str = FORECAST_MODE_HOURLY) -> str | None:
+        """Return the condition summary."""
         src = src or self._current
 
-        cld = src.get(ATTR_WEATHER_CLOUDINESS)
+        cld = src.get(ATTR_FORECAST_CLOUD_COVERAGE)
         if cld is None:
             return None
         if cld == 0:
-            if self._mode == FORECAST_MODE_DAILY or self._is_day(
-                src.get(ATTR_FORECAST_TIME, time.time()),
-                src.get(ATTR_SUNRISE),
-                src.get(ATTR_SUNSET),
+            if mode == FORECAST_MODE_DAILY or (
+                src.get(ATTR_FORECAST_TIME, dt_util.now())
+                < src.get(ATTR_SUNRISE)
+                < src.get(ATTR_SUNSET)
             ):
                 cond = ATTR_CONDITION_SUNNY  # Sunshine
             else:
@@ -275,9 +333,9 @@ class GismeteoApiClient:
         else:
             cond = ATTR_CONDITION_CLOUDY  # Many clouds
 
-        pr_type = src.get(ATTR_WEATHER_PRECIPITATION_TYPE)
-        pr_int = src.get(ATTR_WEATHER_PRECIPITATION_INTENSITY)
-        if src.get(ATTR_WEATHER_STORM):
+        pr_type = src.get(ATTR_FORECAST_PRECIPITATION_TYPE)
+        pr_int = src.get(ATTR_FORECAST_PRECIPITATION_INTENSITY)
+        if src.get(ATTR_FORECAST_IS_STORM):
             cond = ATTR_CONDITION_LIGHTNING  # Lightning/ thunderstorms
             if pr_type != 0:
                 cond = (
@@ -291,115 +349,244 @@ class GismeteoApiClient:
             cond = ATTR_CONDITION_SNOWY  # Snow
         elif pr_type == 3:
             cond = ATTR_CONDITION_SNOWY_RAINY  # Snow and Rain
-        elif self.wind_speed_ms(src) > 10.8:
+        elif self.wind_speed(src) > 10.8:
             if cond == ATTR_CONDITION_CLOUDY:
                 cond = ATTR_CONDITION_WINDY_VARIANT  # Wind and clouds
             else:
                 cond = ATTR_CONDITION_WINDY  # Wind
         elif (
             cld == 0
-            and src.get(ATTR_WEATHER_PHENOMENON) is not None
-            and src.get(ATTR_WEATHER_PHENOMENON) in CONDITION_FOG_CLASSES
+            and src.get(ATTR_FORECAST_PHENOMENON) is not None
+            and src.get(ATTR_FORECAST_PHENOMENON) in CONDITION_FOG_CLASSES
         ):
             cond = ATTR_CONDITION_FOG  # Fog
 
         return cond
 
-    def temperature(self, src=None):
-        """Return the current temperature."""
+    def temperature(self, src=None) -> float | None:
+        """Return the temperature."""
         src = src or self._current
-        temperature = src.get(ATTR_WEATHER_TEMPERATURE)
-        return float(temperature) if temperature is not None else STATE_UNKNOWN
+        return src.get(ATTR_FORECAST_NATIVE_TEMP)
 
-    def temperature_feels_like(self, src=None):
-        """Return the current temperature feeling."""
+    def apparent_temperature(self, src=None) -> float | None:
+        """Return the apparent temperature."""
         temp = self.temperature(src)
         humi = self.humidity(src)
-        wind = self.wind_speed_ms(src)
-        if STATE_UNKNOWN in (temp, humi, wind):
-            return STATE_UNKNOWN
+        wind = self.wind_speed(src)
+        if None in (temp, humi, wind):
+            return None
 
         e_value = humi * 0.06105 * math.exp((17.27 * temp) / (237.7 + temp))
-        feels_like = temp + 0.348 * e_value - 0.7 * wind - 4.25
-        return round(feels_like, 1)
+        feels = temp + 0.348 * e_value - 0.7 * wind - 4.25
+        return round(feels, 1)
 
     def water_temperature(self, src=None):
-        """Return the current temperature of water."""
+        """Return the temperature of water."""
         src = src or self._current
-        temperature = src.get(ATTR_WEATHER_WATER_TEMPERATURE)
+        temperature = src.get(ATTR_FORECAST_WATER_TEMPERATURE)
         return float(temperature) if temperature is not None else STATE_UNKNOWN
 
-    def pressure_mmhg(self, src=None):
-        """Return the current pressure in mmHg."""
+    def pressure(self, src=None) -> float | None:
+        """Return the pressure in mmHg."""
         src = src or self._current
-        pressure = src.get(ATTR_WEATHER_PRESSURE)
-        return float(pressure) if pressure is not None else STATE_UNKNOWN
+        return src.get(ATTR_FORECAST_NATIVE_PRESSURE)
 
-    def pressure_hpa(self, src=None):
-        """Return the current pressure in hPa."""
+    def humidity(self, src=None) -> float | None:
+        """Return the humidity in %."""
         src = src or self._current
-        pressure = src.get(ATTR_WEATHER_PRESSURE)
-        return round(pressure * MMHG2HPA, 1) if pressure is not None else STATE_UNKNOWN
+        return src.get(ATTR_FORECAST_HUMIDITY)
 
-    def humidity(self, src=None):
-        """Return the name of the sensor."""
+    def wind_bearing(self, src=None) -> float | str | None:
+        """Return the wind bearing."""
         src = src or self._current
-        humidity = src.get(ATTR_WEATHER_HUMIDITY)
-        return int(humidity) if humidity is not None else STATE_UNKNOWN
+        bearing = int(src.get(ATTR_FORECAST_WIND_BEARING, 0))
+        return (bearing - 1) * 45 if bearing > 0 else None
 
-    def wind_bearing(self, src=None):
-        """Return the current wind bearing."""
+    def wind_bearing_label(self, src=None) -> str | None:
+        """Return the wind bearing."""
         src = src or self._current
-        bearing = int(src.get(ATTR_WEATHER_WIND_BEARING, 0))
-        return (bearing - 1) * 45 if bearing > 0 else STATE_UNKNOWN
+        bearing = int(src.get(ATTR_FORECAST_WIND_BEARING, 0))
+        try:
+            return {
+                0: None,
+                1: "n",
+                2: "ne",
+                3: "e",
+                4: "se",
+                5: "s",
+                6: "sw",
+                7: "w",
+                8: "nw",
+            }[bearing]
+        except KeyError:
+            _LOGGER.error('Unknown wind bearing value "%s"', bearing)
+            return None
 
-    def wind_speed_kmh(self, src=None):
-        """Return the current windspeed in km/h."""
+    def wind_gust_speed(self, src=None) -> float | None:
+        """Return the wind gust speed in m/s."""
         src = src or self._current
-        speed = src.get(ATTR_WEATHER_WIND_SPEED)
-        return round(speed * MS2KMH, 1) if speed is not None else STATE_UNKNOWN
+        return src.get(ATTR_FORECAST_NATIVE_WIND_GUST_SPEED)
 
-    def wind_speed_ms(self, src=None):
-        """Return the current windspeed in m/s."""
+    def wind_speed(self, src=None) -> float | None:
+        """Return the wind speed in m/s."""
         src = src or self._current
-        speed = src.get(ATTR_WEATHER_WIND_SPEED)
-        return float(speed) if speed is not None else STATE_UNKNOWN
+        return src.get(ATTR_FORECAST_NATIVE_WIND_SPEED)
 
-    def precipitation_amount(self, src=None):
-        """Return the current precipitation amount in mm."""
+    def precipitation_type(self, src=None) -> str | None:
+        """Return the precipitation type."""
         src = src or self._current
-        precipitation = src.get(ATTR_WEATHER_PRECIPITATION_AMOUNT)
-        return precipitation if precipitation is not None else STATE_UNKNOWN
+        pt = src.get(ATTR_FORECAST_PRECIPITATION_TYPE)
+        try:
+            return {
+                0: "none",
+                1: "rain",
+                2: "snow",
+                3: "snow-rain",
+            }[pt]
+        except KeyError:
+            _LOGGER.error('Unknown precipitation type value "%s"', pt)
+            return None
 
-    def forecast(self, src=None):
+    def precipitation_amount(self, src=None) -> float | None:
+        """Return the precipitation amount in mm."""
+        src = src or self._current
+        return src.get(ATTR_FORECAST_PRECIPITATION_AMOUNT)
+
+    def precipitation_intensity(self, src=None) -> str | None:
+        """Return the precipitation intensity."""
+        src = src or self._current
+        pt = src.get(ATTR_FORECAST_PRECIPITATION_INTENSITY)
+        try:
+            return {
+                0: "none",
+                1: "small",
+                2: "normal",
+                3: "heavy",
+            }[pt]
+        except KeyError:
+            _LOGGER.error('Unknown precipitation type value "%s"', pt)
+            return None
+
+    def cloud_coverage(self, src=None) -> float | None:
+        """Return the cloud coverage amount in percents."""
+        src = src or self._current
+        cloudiness = src.get(ATTR_FORECAST_CLOUD_COVERAGE)
+        return int(cloudiness * 100 / 3) if cloudiness is not None else None
+
+    def rain_amount(self, src=None) -> float | None:
+        """Return the rain amount in mm."""
+        src = src or self._current
+        return (
+            (
+                src.get(ATTR_FORECAST_PRECIPITATION_AMOUNT)
+                or PRECIPITATION_AMOUNT[src.get(ATTR_FORECAST_PRECIPITATION_INTENSITY)]
+            )
+            if src.get(ATTR_FORECAST_PRECIPITATION_TYPE) in [1, 3]
+            else 0
+        )
+
+    def snow_amount(self, src=None) -> float | None:
+        """Return the snow amount in mm."""
+        src = src or self._current
+        return (
+            (
+                src.get(ATTR_FORECAST_PRECIPITATION_AMOUNT)
+                or PRECIPITATION_AMOUNT[src.get(ATTR_FORECAST_PRECIPITATION_INTENSITY)]
+            )
+            if src.get(ATTR_FORECAST_PRECIPITATION_TYPE) in [2, 3]
+            else 0
+        )
+
+    def is_storm(self, src=None) -> bool | None:
+        """Return True if storm."""
+        src = src or self._current
+        return src.get(ATTR_FORECAST_IS_STORM)
+
+    def geomagnetic_field(self, src=None) -> int | None:
+        """Return geomagnetic field index."""
+        src = src or self._current
+        return src.get(ATTR_FORECAST_GEOMAGNETIC_FIELD)
+
+    def pollen_birch(self, src=None) -> int | None:
+        """Return birch pollen value."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        return src.get(ATTR_FORECAST_POLLEN_BIRCH)
+
+    def pollen_grass(self, src=None) -> int | None:
+        """Return grass pollen value."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        return src.get(ATTR_FORECAST_POLLEN_GRASS)
+
+    def pollen_ragweed(self, src=None) -> int | None:
+        """Return grass pollen value."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        return src.get(ATTR_FORECAST_POLLEN_RAGWEED)
+
+    def uv_index(self, src=None) -> float | None:
+        """Return UV index."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        return src.get(ATTR_FORECAST_UV_INDEX)
+
+    def road_condition(self, src=None) -> str | None:
+        """Return road condition."""
+        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        rc = src.get(ATTR_FORECAST_ROAD_CONDITION)
+        if not rc:
+            return None
+        rcs = {
+            "Нет данных": None,
+            "Сухая дорога": "dry",
+            "Вода": "water",
+        }
+        try:
+            return rcs[rc]
+        except KeyError:
+            _LOGGER.error('Unknown road condition value "%s"', rc)
+            return None
+
+    def forecast(self, mode: str = FORECAST_MODE_HOURLY) -> list[GismeteoForecast]:
         """Return the forecast array."""
-        src = src or self._forecast
+        now = dt_util.now()
         forecast = []
-        now = int(time.time())
-        dt_util.set_default_time_zone(self._timezone)
-        for i in src:
+        for i in (
+            self._forecast_hourly
+            if mode == FORECAST_MODE_HOURLY
+            else self._forecast_daily
+        ):
             fc_time = i.get(ATTR_FORECAST_TIME)
             if fc_time is None:
-                continue
+                continue  # pragma: no cover
 
             data = {
-                ATTR_FORECAST_TIME: dt_util.as_local(
-                    datetime.utcfromtimestamp(fc_time)
-                ).isoformat(),
-                ATTR_FORECAST_CONDITION: self.condition(i),
-                ATTR_FORECAST_TEMP: self.temperature(i),
-                ATTR_FORECAST_PRESSURE: self.pressure_hpa(i),
-                ATTR_FORECAST_HUMIDITY: self.humidity(i),
-                ATTR_FORECAST_WIND_SPEED: self.wind_speed_kmh(i),
-                ATTR_FORECAST_WIND_BEARING: self.wind_bearing(i),
-                ATTR_FORECAST_PRECIPITATION: self.precipitation_amount(i),
+                k: v
+                for k, v in {
+                    ATTR_FORECAST_TIME: fc_time,
+                    ATTR_FORECAST_IS_DAYTIME: i.get(ATTR_FORECAST_IS_DAYTIME),
+                    ATTR_FORECAST_CONDITION: self.condition(i, mode),
+                    ATTR_FORECAST_NATIVE_APPARENT_TEMP: self.apparent_temperature(i),
+                    ATTR_FORECAST_NATIVE_TEMP: self.temperature(i),
+                    ATTR_FORECAST_NATIVE_PRESSURE: self.pressure(i),
+                    ATTR_FORECAST_HUMIDITY: self.humidity(i),
+                    ATTR_FORECAST_WIND_BEARING: self.wind_bearing(i),
+                    ATTR_FORECAST_WIND_BEARING_LABEL: self.wind_bearing_label(i),
+                    ATTR_FORECAST_NATIVE_WIND_GUST_SPEED: self.wind_speed(i),
+                    ATTR_FORECAST_NATIVE_WIND_SPEED: self.wind_speed(i),
+                    ATTR_FORECAST_PRECIPITATION_TYPE: self.precipitation_type(i),
+                    ATTR_FORECAST_NATIVE_PRECIPITATION: self.precipitation_amount(i),
+                    ATTR_FORECAST_PRECIPITATION_INTENSITY: self.precipitation_intensity(
+                        i
+                    ),
+                    ATTR_FORECAST_UV_INDEX: self.uv_index(i),
+                    ATTR_FORECAST_ROAD_CONDITION: self.road_condition(i),
+                }.items()
+                if v is not None
             }
 
             if (
-                self._mode == FORECAST_MODE_DAILY
+                mode == FORECAST_MODE_DAILY
                 and i.get(ATTR_FORECAST_TEMP_LOW) is not None
             ):
-                data[ATTR_FORECAST_TEMP_LOW] = i.get(ATTR_FORECAST_TEMP_LOW)
+                data[ATTR_FORECAST_NATIVE_TEMP_LOW] = i.get(ATTR_FORECAST_TEMP_LOW)
 
             if fc_time < now:
                 forecast = [data]
@@ -409,121 +596,171 @@ class GismeteoApiClient:
         return forecast
 
     @staticmethod
-    def _get_utime(source, tzone):
+    def _get_utime(source: str, tzone: int) -> datetime:
+        """Get local datetime for given datetime as string.
+
+        :raise ValueError
+        """
         local_date = source
         if len(source) <= 10:
             local_date += "T00:00:00"
         tz_h, tz_m = divmod(abs(tzone), 60)
         local_date += f"+{tz_h:02}:{tz_m:02}" if tzone >= 0 else f"-{tz_h:02}:{tz_m:02}"
-        return dt_util.as_timestamp(local_date)
+        return dt_util.parse_datetime(local_date, raise_on_error=True)
+
+    @Throttle(PARSED_UPDATE_INTERVAL)
+    async def async_update_parsed(self):
+        """Update parsed data."""
+        self._parsed = await self.async_get_parsed()
 
     async def async_update(self) -> bool:
         """Get the latest data from Gismeteo."""
-        if self.attributes[ATTR_ID] is None:
-            await self.async_get_location()
-
-        url = f"{ENDPOINT_URL}/forecast/?city={self.attributes[ATTR_ID]}&lang=en"
-        cache_fname = f"forecast_{self.attributes[ATTR_ID]}"
-
-        response = await self._async_get_data(
-            url, cache_fname, FORECAST_MAX_CACHE_INTERVAL.total_seconds()
-        )
+        response = await self.async_get_forecast()
         try:
             xml = etree.fromstring(response)
-            tzone = int(xml.find("location").get("tzone"))
-            self._attributes[ATTR_LAST_UPDATED] = (
-                dt_util.as_local(
-                    dt_util.utc_from_timestamp(
-                        self._get_utime(xml.find("location").get("cur_time"), tzone)
-                    )
-                )
-                .replace(microsecond=0)
-                .isoformat()
-            )
             current = xml.find("location/fact")
             current_v = current.find("values")
+            tzone = int(xml.find("location").get("tzone"))
+            today = self._get_utime(current.get("valid"), tzone)
+
+            await self.async_update_parsed()
 
             self._current = {
-                ATTR_SUNRISE: self._get(current, "sunrise", int),
-                ATTR_SUNSET: self._get(current, "sunset", int),
-                ATTR_WEATHER_CONDITION: self._get(current_v, "descr"),
-                ATTR_WEATHER_TEMPERATURE: self._get(current_v, "tflt", float),
-                ATTR_WEATHER_PRESSURE: self._get(current_v, "p", int),
-                ATTR_WEATHER_HUMIDITY: self._get(current_v, "hum", int),
-                ATTR_WEATHER_WIND_SPEED: self._get(current_v, "ws", int),
-                ATTR_WEATHER_WIND_BEARING: self._get(current_v, "wd", int),
-                ATTR_WEATHER_CLOUDINESS: self._get(current_v, "cl", int),
-                ATTR_WEATHER_PRECIPITATION_TYPE: self._get(current_v, "pt", int),
-                ATTR_WEATHER_PRECIPITATION_AMOUNT: self._get(current_v, "prflt", float),
-                ATTR_WEATHER_PRECIPITATION_INTENSITY: self._get(current_v, "pr", int),
-                ATTR_WEATHER_STORM: (self._get(current_v, "ts") == 1),
-                ATTR_WEATHER_GEOMAGNETIC_FIELD: self._get(current_v, "grade", int),
-                ATTR_WEATHER_PHENOMENON: self._get(current_v, "ph", int),
-                ATTR_WEATHER_WATER_TEMPERATURE: self._get(current_v, "water_t", float),
+                ATTR_SUNRISE: datetime.fromtimestamp(
+                    self._get(current, "sunrise", int), today.tzinfo
+                ),
+                ATTR_SUNSET: datetime.fromtimestamp(
+                    self._get(current, "sunset", int), today.tzinfo
+                ),
+                ATTR_FORECAST_CONDITION: self._get(current_v, "descr"),
+                ATTR_FORECAST_NATIVE_TEMP: self._get(current_v, "tflt", float),
+                ATTR_FORECAST_NATIVE_PRESSURE: self._get(current_v, "p", int),
+                ATTR_FORECAST_HUMIDITY: self._get(current_v, "hum", int),
+                ATTR_FORECAST_NATIVE_WIND_SPEED: self._get(current_v, "ws", int),
+                ATTR_FORECAST_WIND_BEARING: self._get(current_v, "wd", int),
+                ATTR_FORECAST_CLOUD_COVERAGE: self._get(current_v, "cl", int),
+                ATTR_FORECAST_PRECIPITATION_TYPE: self._get(current_v, "pt", int),
+                ATTR_FORECAST_PRECIPITATION_AMOUNT: self._get(
+                    current_v, "prflt", float
+                ),
+                ATTR_FORECAST_PRECIPITATION_INTENSITY: self._get(current_v, "pr", int),
+                ATTR_FORECAST_IS_STORM: (self._get(current_v, "ts") == 1),
+                ATTR_FORECAST_GEOMAGNETIC_FIELD: self._get(current_v, "grade", int),
+                ATTR_FORECAST_PHENOMENON: self._get(current_v, "ph", int),
+                ATTR_FORECAST_WATER_TEMPERATURE: self._get(current_v, "water_t", float),
             }
 
-            self._forecast = []
-            if self._mode == FORECAST_MODE_HOURLY:
-                for day in xml.findall("location/day"):
-                    sunrise = self._get(day, "sunrise", int)
-                    sunset = self._get(day, "sunset", int)
+            # Update hourly forecast
+            self._forecast_hourly = []
+            for day in xml.findall("location/day"):
+                sunrise = datetime.fromtimestamp(
+                    self._get(day, "sunrise", int), today.tzinfo
+                )
+                sunset = datetime.fromtimestamp(
+                    self._get(day, "sunset", int), today.tzinfo
+                )
 
-                    for i in day.findall("forecast"):
-                        fc_v = i.find("values")
-                        data = {
-                            ATTR_SUNRISE: sunrise,
-                            ATTR_SUNSET: sunset,
-                            ATTR_FORECAST_TIME: self._get_utime(i.get("valid"), tzone),
-                            ATTR_FORECAST_CONDITION: self._get(fc_v, "descr"),
-                            ATTR_FORECAST_TEMP: self._get(fc_v, "t", int),
-                            ATTR_FORECAST_PRESSURE: self._get(fc_v, "p", int),
-                            ATTR_FORECAST_HUMIDITY: self._get(fc_v, "hum", int),
-                            ATTR_FORECAST_WIND_SPEED: self._get(fc_v, "ws", int),
-                            ATTR_FORECAST_WIND_BEARING: self._get(fc_v, "wd", int),
-                            ATTR_FORECAST_CLOUDINESS: self._get(fc_v, "cl", int),
-                            ATTR_FORECAST_PRECIPITATION_TYPE: self._get(
-                                fc_v, "pt", int
-                            ),
-                            ATTR_FORECAST_PRECIPITATION_AMOUNT: self._get(
-                                fc_v, "prflt", float
-                            ),
-                            ATTR_FORECAST_PRECIPITATION_INTENSITY: self._get(
-                                fc_v, "pr", int
-                            ),
-                            ATTR_FORECAST_STORM: (fc_v.get("ts") == 1),
-                            ATTR_FORECAST_GEOMAGNETIC_FIELD: self._get(
-                                fc_v, "grade", int
-                            ),
-                        }
-                        self._forecast.append(data)
-
-            else:  # self._mode == FORECAST_MODE_DAILY
-                for day in xml.findall("location/day[@descr]"):
+                for i in day.findall("forecast"):
+                    fc_v = i.find("values")
+                    tstamp = self._get_utime(i.get("valid"), tzone)
+                    tstamp_day = self._get_utime(i.get("valid")[:10], tzone)
                     data = {
-                        ATTR_SUNRISE: self._get(day, "sunrise", int),
-                        ATTR_SUNSET: self._get(day, "sunset", int),
-                        ATTR_FORECAST_TIME: self._get_utime(day.get("date"), tzone),
-                        ATTR_FORECAST_CONDITION: self._get(day, "descr"),
-                        ATTR_FORECAST_TEMP: self._get(day, "tmax", int),
-                        ATTR_FORECAST_TEMP_LOW: self._get(day, "tmin", int),
-                        ATTR_FORECAST_PRESSURE: self._get(day, "p", int),
-                        ATTR_FORECAST_HUMIDITY: self._get(day, "hum", int),
-                        ATTR_FORECAST_WIND_SPEED: self._get(day, "ws", int),
-                        ATTR_FORECAST_WIND_BEARING: self._get(day, "wd", int),
-                        ATTR_FORECAST_CLOUDINESS: self._get(day, "cl", int),
-                        ATTR_FORECAST_PRECIPITATION_TYPE: self._get(day, "pt", int),
+                        ATTR_SUNRISE: sunrise,
+                        ATTR_SUNSET: sunset,
+                        ATTR_FORECAST_TIME: tstamp,
+                        ATTR_FORECAST_IS_DAYTIME: sunrise < tstamp < sunset,
+                        ATTR_FORECAST_CONDITION: self._get(fc_v, "descr"),
+                        ATTR_FORECAST_NATIVE_TEMP: self._get(fc_v, "t", int),
+                        ATTR_FORECAST_NATIVE_PRESSURE: self._get(fc_v, "p", int),
+                        ATTR_FORECAST_HUMIDITY: self._get(fc_v, "hum", int),
+                        ATTR_FORECAST_NATIVE_WIND_SPEED: self._get(fc_v, "ws", int),
+                        ATTR_FORECAST_WIND_BEARING: self._get(fc_v, "wd", int),
+                        ATTR_FORECAST_CLOUD_COVERAGE: self._get(fc_v, "cl", int),
+                        ATTR_FORECAST_PRECIPITATION_TYPE: self._get(fc_v, "pt", int),
                         ATTR_FORECAST_PRECIPITATION_AMOUNT: self._get(
-                            day, "prflt", float
+                            fc_v, "prflt", float
                         ),
                         ATTR_FORECAST_PRECIPITATION_INTENSITY: self._get(
-                            day, "pr", int
+                            fc_v, "pr", int
                         ),
-                        ATTR_FORECAST_STORM: (self._get(day, "ts") == 1),
-                        ATTR_FORECAST_GEOMAGNETIC_FIELD: self._get(
-                            day, "grademax", int
-                        ),
+                        ATTR_FORECAST_IS_STORM: (fc_v.get("ts") == 1),
+                        ATTR_FORECAST_GEOMAGNETIC_FIELD: self._get(fc_v, "grade", int),
                     }
-                    self._forecast.append(data)
+
+                    parsed = self._parsed.get(tstamp_day)
+                    if parsed:
+                        data.update(
+                            {
+                                ATTR_FORECAST_NATIVE_WIND_GUST_SPEED: self._get(
+                                    parsed, "wind-gust", int
+                                ),
+                                ATTR_FORECAST_POLLEN_BIRCH: self._get(
+                                    parsed, "pollen-birch", int
+                                ),
+                                ATTR_FORECAST_POLLEN_GRASS: self._get(
+                                    parsed, "pollen-grass", int
+                                ),
+                                ATTR_FORECAST_POLLEN_RAGWEED: self._get(
+                                    parsed, "pollen-ragweed", int
+                                ),
+                                ATTR_FORECAST_UV_INDEX: self._get(
+                                    parsed, "radiation", int
+                                ),
+                                ATTR_FORECAST_ROAD_CONDITION: self._get(
+                                    parsed, "roadcondition"
+                                ),
+                            }
+                        )
+
+                    self._forecast_hourly.append(data)
+
+            # Update daily forecast
+            self._forecast_daily = []
+            for day in xml.findall("location/day[@descr]"):
+                tstamp = self._get_utime(day.get("date"), tzone)
+                data = {
+                    ATTR_SUNRISE: sunrise,
+                    ATTR_SUNSET: sunset,
+                    ATTR_FORECAST_TIME: tstamp,
+                    ATTR_FORECAST_CONDITION: self._get(day, "descr"),
+                    ATTR_FORECAST_NATIVE_TEMP: self._get(day, "tmax", int),
+                    ATTR_FORECAST_TEMP_LOW: self._get(day, "tmin", int),
+                    ATTR_FORECAST_NATIVE_PRESSURE: self._get(day, "p", int),
+                    ATTR_FORECAST_HUMIDITY: self._get(day, "hum", int),
+                    ATTR_FORECAST_NATIVE_WIND_SPEED: self._get(day, "ws", int),
+                    ATTR_FORECAST_WIND_BEARING: self._get(day, "wd", int),
+                    ATTR_FORECAST_CLOUD_COVERAGE: self._get(day, "cl", int),
+                    ATTR_FORECAST_PRECIPITATION_TYPE: self._get(day, "pt", int),
+                    ATTR_FORECAST_PRECIPITATION_AMOUNT: self._get(day, "prflt", float),
+                    ATTR_FORECAST_PRECIPITATION_INTENSITY: self._get(day, "pr", int),
+                    ATTR_FORECAST_IS_STORM: (self._get(day, "ts") == 1),
+                    ATTR_FORECAST_GEOMAGNETIC_FIELD: self._get(day, "grademax", int),
+                }
+
+                parsed = self._parsed.get(tstamp)
+                if parsed:
+                    data.update(
+                        {
+                            ATTR_FORECAST_NATIVE_WIND_GUST_SPEED: self._get(
+                                parsed, "wind-gust", int
+                            ),
+                            ATTR_FORECAST_POLLEN_BIRCH: self._get(
+                                parsed, "pollen-birch", int
+                            ),
+                            ATTR_FORECAST_POLLEN_GRASS: self._get(
+                                parsed, "pollen-grass", int
+                            ),
+                            ATTR_FORECAST_POLLEN_RAGWEED: self._get(
+                                parsed, "pollen-ragweed", int
+                            ),
+                            ATTR_FORECAST_UV_INDEX: self._get(parsed, "radiation", int),
+                            ATTR_FORECAST_ROAD_CONDITION: self._get(
+                                parsed, "roadcondition"
+                            ),
+                        }
+                    )
+
+                self._forecast_daily.append(data)
 
             return True
 

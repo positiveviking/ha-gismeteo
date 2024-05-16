@@ -1,8 +1,19 @@
-# https://www.home-assistant.io/integrations/default_config/
 default_config:
 
-# https://www.home-assistant.io/integrations/logger/
 logger:
-  default: info
+  default: error
   logs:
-    custom_components.integration_blueprint: debug
+    custom_components.gismeteo: debug
+
+# If you need to debug uncomment the line below (doc: https://www.home-assistant.io/integrations/debugpy/)
+# debugpy:
+
+gismeteo:
+  sweet_home: {}
+
+  dacha:
+    name: Our Country House
+    latitude: 46.0561601
+    longitude: 13.1741225
+    sensors:
+      forecast_days: 2

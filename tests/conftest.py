@@ -1,5 +1,6 @@
 # pylint: disable=protected-access,redefined-outer-name
 """Global fixtures for integration."""
+
 # Fixtures allow you to replace functions with a Mock object. You can perform
 # many options via the Mock to reflect a particular behavior from the original
 # function that you want to see without going through the function's actual logic.
@@ -16,12 +17,13 @@
 # See here for more info: https://docs.pytest.org/en/latest/fixture.html (note that
 # pytest includes fixtures OOB which you can use as defined on this page)
 import asyncio
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pytest_homeassistant_custom_component.common import load_fixture
 
 from custom_components.gismeteo import GismeteoApiClient
+from homeassistant.util import dt as dt_util
 
 pytest_plugins = "pytest_homeassistant_custom_component"  # pylint: disable=invalid-name
 
@@ -40,8 +42,9 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 @pytest.fixture(name="skip_notifications", autouse=True)
 def skip_notifications_fixture():
     """Skip notification calls."""
-    with patch("homeassistant.components.persistent_notification.async_create"), patch(
-        "homeassistant.components.persistent_notification.async_dismiss"
+    with (
+        patch("homeassistant.components.persistent_notification.async_create"),
+        patch("homeassistant.components.persistent_notification.async_dismiss"),
     ):
         yield
 
@@ -51,12 +54,28 @@ def gismeteo_api():
     """Make mock Gismeteo API client."""
     location_data = load_fixture("location.xml")
     forecast_data = load_fixture("forecast.xml")
+    forecast_parsed_data = load_fixture("forecast_parsed.html")
 
     # pylint: disable=unused-argument
     def mock_data(*args, **kwargs):
-        return location_data if args[0].find("/cities/") >= 0 else forecast_data
+        return (
+            location_data
+            if args[0].find("/cities/") >= 0
+            else (
+                forecast_data
+                if args[0].find("/forecast/") >= 0
+                else forecast_parsed_data
+            )
+        )
 
-    with patch.object(GismeteoApiClient, "_async_get_data", side_effect=mock_data):
+    with (
+        patch.object(GismeteoApiClient, "_async_get_data", side_effect=mock_data),
+        patch.object(
+            dt_util,
+            "now",
+            return_value=dt_util.parse_datetime("2021-02-21T16:16:00+03:00"),
+        ),
+    ):
         yield
 
 
@@ -78,3 +97,12 @@ def error_get_data_fixture():
         GismeteoApiClient, "async_update", side_effect=asyncio.TimeoutError
     ):
         yield
+
+
+class AsyncMock(MagicMock):
+    """Async version of Mock class."""
+
+    # pylint: disable=useless-super-delegation,invalid-overridden-method
+    async def __call__(self, *args, **kwargs):
+        """Call class methods."""
+        return super().__call__(*args, **kwargs)

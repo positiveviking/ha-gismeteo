@@ -1,4 +1,4 @@
-#  Copyright (c) 2019-2022, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
+#  Copyright (c) 2019-2021, Andrey "Limych" Khrolenok <andrey@khrolenok.ru>
 #  Creative Commons BY-NC-SA 4.0 International Public License
 #  (see LICENSE.md or https://creativecommons.org/licenses/by-nc-sa/4.0/)
 """The Gismeteo component.
@@ -7,7 +7,6 @@ For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
-import asyncio
 import logging
 
 from aiohttp import ClientConnectorError, ClientError
@@ -16,20 +15,17 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import (
-    CONF_LATITUDE,
-    CONF_LONGITUDE,
-    CONF_MODE,
-    CONF_NAME,
-    CONF_PLATFORM,
-    CONF_SHOW_ON_MAP,
-)
+from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME, Platform
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 
-from . import DOMAIN, get_gismeteo  # pylint: disable=unused-import
+from . import _get_api_client, forecast_days_int  # pylint: disable=unused-import
 from .api import ApiError
-from .const import CONF_FORECAST, FORECAST_MODE_DAILY, FORECAST_MODE_HOURLY, PLATFORMS
+from .const import (  # pylint: disable=unused-import
+    CONF_FORECAST_DAYS,
+    CONF_PLATFORM_FORMAT,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -66,9 +62,9 @@ class GismeteoFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 async with timeout(10):
-                    gismeteo = get_gismeteo(self.hass, user_input)
+                    gismeteo = _get_api_client(self.hass, user_input)
                     await gismeteo.async_update()
-            except (ApiError, ClientConnectorError, asyncio.TimeoutError, ClientError):
+            except (TimeoutError, ApiError, ClientConnectorError, ClientError):
                 self._errors["base"] = "cannot_connect"
             else:
                 return self.async_create_entry(
@@ -118,38 +114,33 @@ class GismeteoOptionsFlowHandler(config_entries.OptionsFlow):
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the options."""
+        if self.config_entry.source == config_entries.SOURCE_IMPORT:
+            return self.async_abort(reason="no_options_available")
+
         return await self.async_step_user()
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict | None = None):
         """Handle a flow initialized by the user."""
         if user_input is not None:
+            if CONF_FORECAST_DAYS in self.options:
+                self.options[CONF_FORECAST_DAYS] = None
             self.options.update(user_input)
             return await self._update_options()
 
-        schema = {
-            vol.Required(
-                f"{CONF_PLATFORM}_{x}",
-                default=self.options.get(f"{CONF_PLATFORM}_{x}", True),
-            ): bool
-            for x in sorted(PLATFORMS)
-        }
-        schema.update(
-            {
-                vol.Required(
-                    CONF_MODE,
-                    default=self.options.get(CONF_MODE, FORECAST_MODE_HOURLY),
-                ): vol.In([FORECAST_MODE_HOURLY, FORECAST_MODE_DAILY]),
-                vol.Required(
-                    CONF_FORECAST,
-                    default=self.options.get(CONF_FORECAST, False),
-                ): bool,
-                vol.Required(
-                    CONF_SHOW_ON_MAP,
-                    default=self.options.get(CONF_SHOW_ON_MAP, False),
-                ): bool,
-            }
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_PLATFORM_FORMAT.format(Platform.SENSOR)
+                        ): bool,
+                        vol.Optional(CONF_FORECAST_DAYS): forecast_days_int,
+                    }
+                ),
+                self.config_entry.options,
+            ),
         )
-        return self.async_show_form(step_id="user", data_schema=vol.Schema(schema))
 
     async def _update_options(self):
         """Update config entry options."""

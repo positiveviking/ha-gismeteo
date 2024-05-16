@@ -14,7 +14,7 @@
 
 _Component to integrate with Gismeteo weather provider._
 
-This component can be used in two different ways: as a weather provider for any given coordinates and as a set of sensors for current coordinates of a house.
+This component can be used in two different ways: as a weather provider and as a set of sensors.
 
 ![Gismeteo Logo][exampleimg]
 
@@ -23,8 +23,6 @@ This component can be used in two different ways: as a weather provider for any 
 I also suggest you [visit the support topic][forum] on the community forum.
 
 ## Installation
-
-**Note:** If you configure the integration through the Home Assistant GUI, the weather provider and sensors will be created at the same time. But you're limited to only one set of settings. When configuring via `configuration.yaml` file, you can create multiple weather providers.
 
 ### Install from HACS (recommended)
 
@@ -51,157 +49,136 @@ I also suggest you [visit the support topic][forum] on the community forum.
 
 ## Breaking Changes
 
+- Since version 3.0.0...
+    - the format of the component settings in file `configuration.yaml` has been changed. Now all the component settings are collected in a single block `gismeteo`.
+    - forecast sensor is removed from component. Use `forecast_days` option instead.
 - Since version 2.2.0 forecast sensor has the name `... 3h Forecast` instead of `... Forecast`.
+
+## Configuration Examples
+
+Adding the following to your `configuration.yaml` file will create two weather locations,
+one for the home coordinates and one for the remote location.
+
+The first location will create three entities: hourly weather provider and two sensors
+(for current temperature and current humidity). The second location will create eight
+sensors: four groups of sensors (temperature + humidity) for current weather and forecasts
+for today and 2 days forward.
+
+```yaml
+# Example configuration.yaml entry
+gismeteo:
+  sweet_home:
+    sensors:
+
+  dacha:
+    name: Our Country House
+    latitude: ...
+    longitude: ...
+    sensors:
+      forecast_days: 2
+```
+
+See below detailed descriptions to configure component.
+
+<p align="center">* * *</p>
+I put a lot of work into making this repo and component available and updated to inspire and help others! I will be glad to receive thanks from you — it will give me new strength and add enthusiasm:
+<p align="center"><br>
+<a href="https://www.patreon.com/join/limych?" target="_blank"><img src="http://khrolenok.ru/support_patreon.png" alt="Patreon" width="250" height="48"></a>
+<br>or&nbsp;support via Bitcoin or Etherium:<br>
+<a href="https://sochain.com/a/mjz640g" target="_blank"><img src="http://khrolenok.ru/support_bitcoin.png" alt="Bitcoin" width="150"><br>
+16yfCfz9dZ8y8yuSwBFVfiAa3CNYdMh7Ts</a>
+</p>
 
 ## Configuration variables
 
-### Weather Provider Configuration
+**gismeteo:**\
+  _(map) (**Required**)_\
+  Map of your weather locations.
 
-The `gismeteo` weather platform uses [Gismeteo](https://www.gismeteo.ru/) as a source for current meteorological data for a specified location.
-
-![Example](gismeteo_weather.jpg)
-
-To add Gismeteo weather provider to your installation, add the following to your `configuration.yaml` file:
-
-```yaml
-# Example configuration.yaml entry
-weather:
-  - platform: gismeteo
-```
-
-You can add as many providers with different configurations as you wish.
-
-<p align="center">* * *</p>
-I put a lot of work into making this repo and component available and updated to inspire and help others! I will be glad to receive thanks from you — it will give me new strength and add enthusiasm:
-<p align="center"><br>
-<a href="https://www.patreon.com/join/limych?" target="_blank"><img src="http://khrolenok.ru/support_patreon.png" alt="Patreon" width="250" height="48"></a>
-<br>or&nbsp;support via Bitcoin or Etherium:<br>
-<a href="https://sochain.com/a/mjz640g" target="_blank"><img src="http://khrolenok.ru/support_bitcoin.png" alt="Bitcoin" width="150"><br>
-16yfCfz9dZ8y8yuSwBFVfiAa3CNYdMh7Ts</a>
-</p>
-
-#### Configuration Variables
-
-**name:**\
-  _(string) (Optional)_\
-  Name to use in the frontend.\
-  _Default value: Gismeteo_
-
-**mode:**\
-  _(string) (Optional)_\
-  Can specify `hourly` or `daily`. Select `hourly` for a three-hour forecast for 24h, `daily` for daily forecast for a week.\
-  _Default value: `hourly`_
-
-**latitude:**\
-  _(float) (Optional)_\
-  Latitude of the location to display the weather.\
-  _Default value: Your home location latitude._
-
-**longitude:**\
-  _(float) (Optional)_\
-  Longitude of the location to display the weather.\
-  _Default value: Your home location longitude._
-
-**show_on_map:**\
-  _(boolean) (Optional)_\
-  Enables showing the location of the weather station on the map.\
-  _Default value: false_
-
-### Weather Sensors Configuration
-
-The `gismeteo` sensors uses [Gismeteo](https://www.gismeteo.ru/) as a source for current meteorological data for your home location. The forecast will show you the condition in 3 h.
-
-![Example](gismeteo_sensor.jpg)
-
-To add Gismeteo sensors to your installation, add the following to your `configuration.yaml` file:
-
-```yaml
-# Example configuration.yaml entry
-sensor:
-  - platform: gismeteo
-    monitored_conditions:
-      - weather
-```
-
-You can add only one group of sensors.
-
-<p align="center">* * *</p>
-I put a lot of work into making this repo and component available and updated to inspire and help others! I will be glad to receive thanks from you — it will give me new strength and add enthusiasm:
-<p align="center"><br>
-<a href="https://www.patreon.com/join/limych?" target="_blank"><img src="http://khrolenok.ru/support_patreon.png" alt="Patreon" width="250" height="48"></a>
-<br>or&nbsp;support via Bitcoin or Etherium:<br>
-<a href="https://sochain.com/a/mjz640g" target="_blank"><img src="http://khrolenok.ru/support_bitcoin.png" alt="Bitcoin" width="150"><br>
-16yfCfz9dZ8y8yuSwBFVfiAa3CNYdMh7Ts</a>
-</p>
-
-#### Configuration Variables
-
-**name:**\
-  _(string) (Optional)_\
-  Additional name for the sensors. Default to platform name.\
-  _Default value: Gismeteo_
-
-**forecast:**\
-  _(boolean) (Optional)_\
-  Enables the forecast for 3h. The default is to display only the current conditions.\
-  _Default value: false_
-
-**monitored_conditions:**\
-  _(list) (Required)_\
-  Conditions to display in the frontend.
-
-> **condition**\
->   A human-readable text summary.
+> **name:**\
+>   _(string) (Optional)_\
+>   Name to use in the frontend.
 >
-> **temperature**\
->   The current temperature of air.
+> **latitude:**\
+>   _(float) (Optional) (Default: coordinates from the Home Assistant configuration)_\
+>   Latitude coordinate to monitor weather of (required if `longitude` is specified).
 >
-> **temperature_feels_like**\
->   The current feeling of temperature of air.
+> **longitude:**\
+>   _(float) (Optional) (Default: coordinates from the Home Assistant configuration)_\
+>   Longitude coordinate to monitor weather of (required if `latitude` is specified).
 >
-> **humidity**\
->   The relative humidity of air.
+> **sensors:**\
+>   _(list) (Optional)_\
+>   Setup for list of forecast sensors to display in the frontend.
 >
-> **pressure**\
->   The sea-level air pressure in millibars.
->   At the same time, a second sensor is created, indicating the same pressure in mmHg.
->
-> **wind_speed**\
->   The wind speed.
->
-> **wind_bearing**\
->   The wind bearing.
->
-> **clouds**\
->   Description about cloud coverage.
->
-> **rain**\
->   The rain volume.
->
-> **snow**\
->   The snow volume.
->
-> **storm**\
->   The storm prediction.
->
-> **geomagnetic**\
->   The geomagnetic field value:\
->   1 = No noticeable geomagnetic disturbance\
->   2 = Small geomagnetic disturbances\
->   3 = Weak geomagnetic storm\
->   4 = Small geomagnetic storm\
->   5 = Moderate geomagnetic storm\
->   6 = Severe geomagnetic storm\
->   7 = Hard geomagnetic storm\
->   8 = Extreme geomagnetic storm
->
-> **water_temperature**\
->   The current temperature of water.
+> > **forecast_days:**\
+> >   _(positive int; 0–6) (Optional) (Default: do not create any sensors)_\
+> >   How many days ahead to make forecast sensors.\
+> >   **Note:** If you only need a forecast sensors for today, specify `0`.
 
-**show_on_map:**\
-  _(boolean) (Optional)_\
-  Enables showing the location of the weather station on the map.\
-  _Default value: false_
+
+> > > **condition**\
+> > >   A human-readable text summary.
+> > >
+> > > **temperature**\
+> > >   The current temperature of air.
+> > >
+> > > **temperature_feels_like**\
+> > >   The current air temperature feels like.
+> > >
+> > > **humidity**\
+> > >   The relative humidity of air.
+> > >
+> > > **pressure**\
+> > >   The sea-level air pressure in millibars.\
+> > >   At the same time, a second sensor is created, indicating the same pressure in mmHg.
+> > >
+> > > **wind_speed**\
+> > >   The wind speed.
+> > >
+> > > **wind_bearing**\
+> > >   The wind bearing.
+> > >
+> > > **clouds**\
+> > >   Description about cloud coverage.
+> > >
+> > > **rain**\
+> > >   The rain volume.
+> > >
+> > > **snow**\
+> > >   The snow volume.
+> > >
+> > > **storm**\
+> > >   The storm prediction.
+> > >
+> > > **geomagnetic**\
+> > >   The geomagnetic field value:\
+> > >   1 = No noticeable geomagnetic disturbance\
+> > >   2 = Small geomagnetic disturbances\
+> > >   3 = Weak geomagnetic storm\
+> > >   4 = Small geomagnetic storm\
+> > >   5 = Moderate geomagnetic storm\
+> > >   6 = Severe geomagnetic storm\
+> > >   7 = Hard geomagnetic storm\
+> > >   8 = Extreme geomagnetic storm
+> > >
+> > > **water_temperature**\
+> > >   The current temperature of water.
+> > >
+> > > **allergy_birch**\
+> > >   Birch pollen concentration:\
+> > >   1–10 = Low\
+> > >   11–50 = Moderate\
+> > >   51–500 = High\
+> > >   501+ = Very high
+> > >
+> > > **uv_index**\
+> > >   The ultraviolet index:\
+> > >   0–2 = Low\
+> > >   3–5 = Moderate\
+> > >   6–7 = High\
+> > >   8–10 = Very high\
+> > >   11+ = Extreme
 
 ## Track updates
 
@@ -233,8 +210,6 @@ Thank you for being involved! :heart_eyes:
 The original setup of this component is by [Andrey "Limych" Khrolenok](https://github.com/Limych).
 
 For a full list of all authors and contributors, check [the contributor's page][contributors].
-
-This Home Assistant custom component was created and is updated using the [HA-Blueprint template](https://github.com/Limych/ha-blueprint). You can use this template to maintain your own Home Assistant custom components.
 
 ## License
 

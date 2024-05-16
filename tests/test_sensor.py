@@ -1,83 +1,91 @@
-"""Tests for GisMeteo integration."""
-from unittest.mock import Mock
-
-from pytest_homeassistant_custom_component.common import assert_setup_component
+# pylint: disable=protected-access,redefined-outer-name
+"""Tests for Gismeteo integration."""
+from unittest.mock import Mock, patch
 
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
-from custom_components.gismeteo.const import CONF_FORECAST, DOMAIN, SENSOR_TYPES
-from custom_components.gismeteo.sensor import GismeteoSensor, fix_kinds
-from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
-from homeassistant.const import CONF_MONITORED_CONDITIONS, CONF_NAME, CONF_PLATFORM
+from custom_components.gismeteo.const import ATTRIBUTION
+from custom_components.gismeteo.sensor import GismeteoSensor, _fix_types, _gen_entities
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
+from homeassistant.components.weather import ATTR_FORECAST_TEMP
+from homeassistant.const import CONF_MONITORED_CONDITIONS, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 
-from tests.const import MOCK_CONFIG, MOCK_UNIQUE_ID
+from tests.const import FAKE_UNIQUE_ID
 
 
-async def test_fix_kinds(caplog):
-    """Test fix_kinds function."""
+async def test__fix_types(caplog):
+    """Test _fix_types function."""
     caplog.clear()
-    res = fix_kinds([])
-    assert not res
+    res = _fix_types([])
+    assert res == []
     assert len(caplog.records) == 0
 
     caplog.clear()
-    res = fix_kinds(["qwe", "asd"])
-    assert res == ["asd", "qwe"]
+    res = _fix_types(["qwe", "asd"])
+    assert res == []
     assert len(caplog.records) == 0
 
     caplog.clear()
-    res = fix_kinds(["qwe", "asd", "pressure", "forecast", "pressure_mmhg"])
-    assert res == ["asd", "pressure", "qwe"]
+    res = _fix_types(["humidity", "temperature"])
+    assert res == ["temperature", "humidity"]
     assert len(caplog.records) == 0
 
     caplog.clear()
-    res = fix_kinds(["qwe", "asd", "weather"])
-    assert res == ["asd", "condition", "qwe"]
+    res = _fix_types(
+        ["humidity", "temperature", "pressure", "forecast", "pressure_mmhg"]
+    )
+    assert res == ["temperature", "humidity", "pressure"]
+    assert len(caplog.records) == 0
+
+    caplog.clear()
+    res = _fix_types(["humidity", "temperature", "weather"])
+    assert res == ["condition", "temperature", "humidity"]
     assert len(caplog.records) == 1
 
     caplog.clear()
-    res = fix_kinds(["qwe", "asd", "weather"], False)
-    assert res == ["asd", "condition", "qwe"]
+    res = _fix_types(["humidity", "temperature", "weather"], False)
+    assert res == ["condition", "temperature", "humidity"]
     assert len(caplog.records) == 0
 
 
-async def test_sensor_initialization(hass: HomeAssistant):
-    """Test sensor initialization."""
+@patch("custom_components.gismeteo.GismeteoDataUpdateCoordinator")
+async def test__gen_entities(mock_coordinator):
+    """Test _gen_entities function."""
+    res = _gen_entities("Test location", mock_coordinator, {}, False)
+    assert len(res) == 20
+
+    res = _gen_entities(
+        "Test location",
+        mock_coordinator,
+        {CONF_MONITORED_CONDITIONS: ["temperature", "humidity"]},
+        False,
+    )
+    assert len(res) == 2
+
+
+async def test_entity_initialization(hass: HomeAssistant):
+    """Test entity initialization."""
     mock_api = Mock()
-    mock_api.condition = Mock(return_value="asd")
+    mock_api.temperature = Mock(return_value=123)
+    mock_api.attributes = {}
 
-    coordinator = GismeteoDataUpdateCoordinator(hass, MOCK_UNIQUE_ID, mock_api)
-    sensor = GismeteoSensor("Test", "condition", coordinator, MOCK_CONFIG)
+    coordinator = GismeteoDataUpdateCoordinator(hass, FAKE_UNIQUE_ID, mock_api)
+    sensor = GismeteoSensor(
+        coordinator,
+        SensorEntityDescription(
+            key=ATTR_FORECAST_TEMP,
+            translation_key="temperature",
+            device_class=SensorDeviceClass.TEMPERATURE,
+            native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        ),
+        "Test",
+    )
 
-    assert sensor.name == "Test Condition"
-    assert sensor.unique_id == f"{MOCK_UNIQUE_ID}-condition"
+    assert sensor.unique_id == f"{FAKE_UNIQUE_ID}-temperature"
     assert sensor.should_poll is False
     assert sensor.available is True
-    assert sensor.state == "asd"
-    assert sensor.unit_of_measurement is None
+    assert sensor.native_value == 123
+    assert sensor.native_unit_of_measurement == UnitOfTemperature.CELSIUS
     assert sensor.icon is None
-
-
-async def test_async_setup_platform(hass: HomeAssistant, gismeteo_api):
-    """Test platform setup."""
-    config = {
-        SENSOR_DOMAIN: {
-            CONF_PLATFORM: DOMAIN,
-            CONF_NAME: "Office",
-            CONF_MONITORED_CONDITIONS: list(SENSOR_TYPES.keys()),
-            CONF_FORECAST: True,
-        },
-    }
-
-    with assert_setup_component(1, SENSOR_DOMAIN):
-        assert await async_setup_component(hass, SENSOR_DOMAIN, config)
-    await hass.async_block_till_done()
-
-    state = hass.states.get(f"{SENSOR_DOMAIN}.office_condition")
-    assert state is not None
-    assert state.state == "snowy"
-
-    state = hass.states.get(f"{SENSOR_DOMAIN}.office_3h_forecast")
-    assert state is not None
-    assert state.state == "clear-night"
+    assert sensor.device_class == SensorDeviceClass.TEMPERATURE
+    assert sensor.attribution == ATTRIBUTION

@@ -1,6 +1,51 @@
 {% if prerelease %}
 ### NB!: This is a Beta version!
 {% endif %}
+{% if (version_installed.split(".")[0] | int) < 3  %}
+### ATTENTION! Breaking changes!
+
+Starting from version 3.0.0, the format of the component settings in file `configuration.yaml` has been changed.
+
+If you are set component settings via Home Assistant UI, please, skip this chapter.
+
+If you are set component settings via file `configuration.yaml`, you need to edit the settings for the new version to work.
+
+Now all the component settings are collected in a single block `gismeteo`.
+If you now, for example, have such a config:
+```yaml
+# Example configuration.yaml entry
+sensor:
+  - platform: gismeteo
+    name: Sweet Home
+    monitored_conditions:
+      - temperature
+      - humidity
+
+weather:
+  - platform: gismeteo
+    name: Sweet Home
+    latitude: ...
+    longitude: ...
+    mode: hourly  # Default value
+```
+It will turn into this config:
+```yaml
+# Example configuration.yaml entry
+gismeteo:
+  sweet_home:
+    name: Sweet Home
+    latitude: ...
+    longitude: ...
+    weather:
+      mode: hourly  # Default value
+    sensors:
+      monitored_conditions:
+        - temperature
+        - humidity
+```
+
+See detailed instructions in [Documentation][component].
+{% endif %}
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
