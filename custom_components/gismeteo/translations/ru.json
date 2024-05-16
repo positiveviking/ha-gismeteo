@@ -36,8 +36,24 @@
         "wind_speed": {
           "name": "Скорость Ветра"
         },
+        "wind_gust_speed": {
+          "name": "Скорость Порывов Ветра"
+        },
         "wind_bearing": {
           "name": "Направление Ветра"
+        },
+        "wind_bearing_label": {
+          "name": "Направление Ветра",
+          "state": {
+            "n": "С",
+            "ne": "СВ",
+            "e": "В",
+            "se": "ЮВ",
+            "s": "Ю",
+            "sw": "ЮЗ",
+            "w": "З",
+            "nw": "СЗ"
+          }
         },
         "cloud_coverage": {
           "name": "Облачность"
@@ -48,11 +64,11 @@
         "snow_amount": {
           "name": "Выпадение Снега"
         },
-        "storm": {
+        "is_storm": {
           "name": "Шторм",
           "state": {
-            "False": "Нет",
-            "True": "Есть"
+            "off": "Нет",
+            "on": "Есть"
           }
         },
         "geomagnetic_field": {
@@ -72,6 +88,14 @@
         },
         "pollen_ragweed": {
           "name": "Уровень Пыльцы Амброзии"
+        },
+        "road_condition": {
+          "name": "Состояние Дорог",
+          "state": {
+            "none": "Нет данных",
+            "dry": "Сухие",
+            "water": "Вода"
+          }
         },
         "condition_forecast": {
           "name": "Прогноз Погоды {day}д",
@@ -108,8 +132,24 @@
         "wind_speed_forecast": {
           "name": "Прогноз Скорости Ветра {day}д"
         },
+        "wind_gust_speed_forecast": {
+          "name": "Прогноз Скорости Порывов Ветра {day}д"
+        },
         "wind_bearing_forecast": {
           "name": "Прогноз Направления Ветра {day}д"
+        },
+        "wind_bearing_label_forecast": {
+          "name": "Прогноз Направления Ветра {day}д",
+          "state": {
+            "n": "С",
+            "ne": "СВ",
+            "e": "В",
+            "se": "ЮВ",
+            "s": "Ю",
+            "sw": "ЮЗ",
+            "w": "З",
+            "nw": "СЗ"
+          }
         },
         "cloud_coverage_forecast": {
           "name": "Прогноз Облачности {day}д"
@@ -120,11 +160,11 @@
         "snow_amount_forecast": {
           "name": "Прогноз Выпадения Снега {day}д"
         },
-        "storm_forecast": {
+        "is_storm_forecast": {
           "name": "Прогноз Шторма {day}д",
           "state": {
-            "False": "Нет",
-            "True": "Есть"
+            "off": "Нет",
+            "on": "Есть"
           }
         },
         "geomagnetic_field_forecast": {
@@ -144,6 +184,14 @@
         },
         "pollen_ragweed_forecast": {
           "name": "Прогноз Уровня Пыльцы Амброзии {day}д"
+        },
+        "road_condition_forecast": {
+          "name": "Прогноз Состояния Дорог {day}д",
+          "state": {
+            "none": "Нет данных",
+            "dry": "Сухие",
+            "water": "Вода"
+          }
         }
       }
     },
@@ -174,10 +222,8 @@
         "step": {
             "user": {
                 "data": {
-                    "platform_sensor": "Сенсоры включены",
-                    "platform_weather": "Объект weather включен",
-                    "mode": "Режим прогноза",
-                    "forecast": "Добавить сенсор 3-часового прогноза"
+                    "_platform_sensor": "Сенсоры включены",
+                    "forecast_days": "Сенсоры прогноза на (дней)"
                 },
                 "title": "Настройки Gismeteo"
             }

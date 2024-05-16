@@ -18,6 +18,11 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorEntityDescription,
 )
+from homeassistant.components.weather import (
+    ATTR_FORECAST_APPARENT_TEMP,
+    ATTR_FORECAST_CLOUD_COVERAGE,
+    ATTR_FORECAST_CONDITION,
+)
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
 from homeassistant.const import CONF_MONITORED_CONDITIONS, CONF_NAME, Platform
 from homeassistant.core import HomeAssistant
@@ -26,25 +31,18 @@ from homeassistant.helpers.typing import ConfigType, StateType
 
 from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
 from .const import (
+    ATTR_FORECAST_GEOMAGNETIC_FIELD,
+    ATTR_FORECAST_RAIN_AMOUNT,
+    ATTR_FORECAST_SNOW_AMOUNT,
     ATTRIBUTION,
     CONF_FORECAST_DAYS,
     CONF_PLATFORM_FORMAT,
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
+    FORECAST_MODE_DAILY,
+    FORECAST_SENSOR_DESCRIPTIONS,
     SENSOR_DESCRIPTIONS,
-    TYPE_APPARENT_TEMPERATURE,
-    TYPE_CLOUD_COVERAGE,
-    TYPE_CLOUDS,
-    TYPE_CONDITION,
-    TYPE_GEOMAGNETIC,
-    TYPE_GEOMAGNETIC_FIELD,
-    TYPE_RAIN,
-    TYPE_RAIN_AMOUNT,
-    TYPE_SNOW,
-    TYPE_SNOW_AMOUNT,
-    TYPE_TEMPERATURE_FEELS_LIKE,
-    TYPE_WEATHER,
 )
 from .entity import GismeteoEntity
 
@@ -53,12 +51,12 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({})
 
 DEPRECATED_SENSOR_TYPES: Final = {
-    TYPE_WEATHER: TYPE_CONDITION,
-    TYPE_TEMPERATURE_FEELS_LIKE: TYPE_APPARENT_TEMPERATURE,
-    TYPE_CLOUDS: TYPE_CLOUD_COVERAGE,
-    TYPE_RAIN: TYPE_RAIN_AMOUNT,
-    TYPE_SNOW: TYPE_SNOW_AMOUNT,
-    TYPE_GEOMAGNETIC: TYPE_GEOMAGNETIC_FIELD,
+    "weather": ATTR_FORECAST_CONDITION,
+    "temperature_feels_like": ATTR_FORECAST_APPARENT_TEMP,
+    "clouds": ATTR_FORECAST_CLOUD_COVERAGE,
+    "rain": ATTR_FORECAST_RAIN_AMOUNT,
+    "snow": ATTR_FORECAST_SNOW_AMOUNT,
+    "geomagnetic": ATTR_FORECAST_GEOMAGNETIC_FIELD,
 }
 
 
@@ -113,7 +111,7 @@ def _gen_entities(
             entities.extend(
                 [
                     GismeteoSensor(coordinator, desc, location_name, day)
-                    for desc in SENSOR_DESCRIPTIONS
+                    for desc in FORECAST_SENSOR_DESCRIPTIONS
                     if desc.key in types
                 ]
             )
@@ -195,7 +193,12 @@ class GismeteoSensor(GismeteoEntity, SensorEntity):
     def native_value(self) -> StateType | date | datetime | Decimal:
         """Return the value reported by the sensor."""
         try:
-            return getattr(self._gismeteo, self.entity_description.key)()
+
+            return getattr(self._gismeteo, self.entity_description.key)(
+                self._gismeteo.forecast_data(self._day, FORECAST_MODE_DAILY)
+                if self._day is not None
+                else None
+            )
 
         except KeyError:  # pragma: no cover
             _LOGGER.warning(

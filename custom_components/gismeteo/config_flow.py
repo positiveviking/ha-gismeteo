@@ -19,12 +19,12 @@ from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME, Platfo
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 
-from . import _get_api_client  # pylint: disable=unused-import
+from . import _get_api_client, forecast_days_int  # pylint: disable=unused-import
 from .api import ApiError
 from .const import (  # pylint: disable=unused-import
+    CONF_FORECAST_DAYS,
     CONF_PLATFORM_FORMAT,
     DOMAIN,
-    PLATFORMS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,21 +119,28 @@ class GismeteoOptionsFlowHandler(config_entries.OptionsFlow):
 
         return await self.async_step_user()
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(self, user_input: dict | None = None):
         """Handle a flow initialized by the user."""
         if user_input is not None:
+            if CONF_FORECAST_DAYS in self.options:
+                self.options[CONF_FORECAST_DAYS] = None
             self.options.update(user_input)
             return await self._update_options()
 
-        schema = {
-            vol.Required(
-                CONF_PLATFORM_FORMAT.format(x),
-                default=self.options.get(CONF_PLATFORM_FORMAT.format(x), True),
-            ): bool
-            for x in sorted(PLATFORMS)
-            if x != Platform.WEATHER
-        }
-        return self.async_show_form(step_id="user", data_schema=vol.Schema(schema))
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema(
+                    {
+                        vol.Required(
+                            CONF_PLATFORM_FORMAT.format(Platform.SENSOR)
+                        ): bool,
+                        vol.Optional(CONF_FORECAST_DAYS): forecast_days_int,
+                    }
+                ),
+                self.config_entry.options,
+            ),
+        )
 
     async def _update_options(self):
         """Update config entry options."""

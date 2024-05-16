@@ -10,7 +10,11 @@ https://github.com/Limych/ha-gismeteo/
 from functools import cached_property
 import logging
 
-from homeassistant.components.weather import WeatherEntity
+from homeassistant.components.weather import (
+    CoordinatorWeatherEntity,
+    Forecast,
+    WeatherEntityFeature,
+)
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
     CONF_NAME,
@@ -18,10 +22,17 @@ from homeassistant.const import (
     UnitOfSpeed,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 
 from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
-from .const import ATTRIBUTION, COORDINATOR, DOMAIN, DOMAIN_YAML
+from .const import (
+    ATTRIBUTION,
+    COORDINATOR,
+    DOMAIN,
+    DOMAIN_YAML,
+    FORECAST_MODE_DAILY,
+    FORECAST_MODE_HOURLY,
+)
 from .entity import GismeteoEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -53,7 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
     async_add_entities(entities, False)
 
 
-class GismeteoWeather(GismeteoEntity, WeatherEntity):
+class GismeteoWeather(GismeteoEntity, CoordinatorWeatherEntity):
     """Implementation of an Gismeteo sensor."""
 
     _attr_has_entity_name = True
@@ -62,6 +73,9 @@ class GismeteoWeather(GismeteoEntity, WeatherEntity):
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.MMHG
     _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
+    _attr_supported_features = (
+        WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
+    )
 
     def __init__(
         self,
@@ -80,6 +94,11 @@ class GismeteoWeather(GismeteoEntity, WeatherEntity):
     def condition(self) -> str | None:
         """Return the current condition."""
         return self._gismeteo.condition()
+
+    @cached_property
+    def native_apparent_temperature(self) -> float | None:
+        """Return the apparent temperature in native units."""
+        return self._gismeteo.apparent_temperature()
 
     @cached_property
     def native_temperature(self) -> float | None:
@@ -102,6 +121,11 @@ class GismeteoWeather(GismeteoEntity, WeatherEntity):
         return self._gismeteo.wind_bearing()
 
     @cached_property
+    def native_wind_gust_speed(self) -> float | None:
+        """Return the wind gust speed in native units."""
+        return self._gismeteo.wind_gust_speed()
+
+    @cached_property
     def native_wind_speed(self) -> float | None:
         """Return the wind speed in native units."""
         return self._gismeteo.wind_speed()
@@ -116,20 +140,12 @@ class GismeteoWeather(GismeteoEntity, WeatherEntity):
         """Return the UV index."""
         return self._gismeteo.uv_index()
 
-    #
-    # @property
-    # def forecast(self):
-    #     """Return the forecast array."""
-    #     return self._gismeteo.forecast()
-    #
-    # async def async_forecast_daily(self) -> list[Forecast] | None:
-    #     """Return the daily forecast in native units."""
-    #     raise NotImplementedError
-    #
-    # async def async_forecast_twice_daily(self) -> list[Forecast] | None:
-    #     """Return the daily forecast in native units."""
-    #     raise NotImplementedError
-    #
-    # async def async_forecast_hourly(self) -> list[Forecast] | None:
-    #     """Return the hourly forecast in native units."""
-    #     raise NotImplementedError
+    @callback
+    def _async_forecast_daily(self) -> list[Forecast] | None:
+        """Return the daily forecast in native units."""
+        return self._gismeteo.forecast(FORECAST_MODE_DAILY)
+
+    @callback
+    def _async_forecast_hourly(self) -> list[Forecast] | None:
+        """Return the hourly forecast in native units."""
+        return self._gismeteo.forecast(FORECAST_MODE_HOURLY)

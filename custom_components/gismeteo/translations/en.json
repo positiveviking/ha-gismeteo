@@ -36,8 +36,24 @@
         "wind_speed": {
           "name": "Wind Speed"
         },
+        "wind_gust_speed": {
+          "name": "Wind Gusts Speed"
+        },
         "wind_bearing": {
           "name": "Wind Bearing"
+        },
+        "wind_bearing_label": {
+          "name": "Wind Bearing",
+          "state": {
+            "n": "N",
+            "ne": "NE",
+            "e": "E",
+            "se": "SE",
+            "s": "S",
+            "sw": "SW",
+            "w": "W",
+            "nw": "NW"
+          }
         },
         "cloud_coverage": {
           "name": "Cloud Coverage"
@@ -48,11 +64,11 @@
         "snow_amount": {
           "name": "Snow Amount"
         },
-        "storm": {
+        "is_storm": {
           "name": "Storm",
           "state": {
-            "False": "False",
-            "True": "True"
+            "off": "False",
+            "on": "True"
           }
         },
         "geomagnetic_field": {
@@ -72,6 +88,14 @@
         },
         "pollen_ragweed": {
           "name": "Ragweed Pollen Index"
+        },
+        "road_condition": {
+          "name": "Road Condition",
+          "state": {
+            "none": "No data",
+            "dry": "Dry",
+            "water": "Water"
+          }
         },
         "condition_forecast": {
           "name": "Condition Forecast {day}d",
@@ -108,8 +132,24 @@
         "wind_speed_forecast": {
           "name": "Wind Speed Forecast {day}d"
         },
+        "wind_gust_speed_forecast": {
+          "name": "Wind Gusts Speed Forecast {day}d"
+        },
         "wind_bearing_forecast": {
           "name": "Wind Bearing Forecast {day}d"
+        },
+        "wind_bearing_label_forecast": {
+          "name": "Wind Bearing Forecast {day}d",
+          "state": {
+            "n": "N",
+            "ne": "NE",
+            "e": "E",
+            "se": "SE",
+            "s": "S",
+            "sw": "SW",
+            "w": "W",
+            "nw": "NW"
+          }
         },
         "cloud_coverage_forecast": {
           "name": "Cloud Coverage Forecast {day}d"
@@ -120,11 +160,11 @@
         "snow_amount_forecast": {
           "name": "Snow Amount Forecast {day}d"
         },
-        "storm_forecast": {
+        "is_storm_forecast": {
           "name": "Storm Forecast {day}d",
           "state": {
-            "False": "False",
-            "True": "True"
+            "off": "False",
+            "on": "True"
           }
         },
         "geomagnetic_field_forecast": {
@@ -144,6 +184,14 @@
         },
         "pollen_ragweed_forecast": {
           "name": "Ragweed Pollen Index Forecast {day}d"
+        },
+        "road_condition_forecast": {
+          "name": "Road Condition Forecast {day}d",
+          "state": {
+            "none": "No data",
+            "dry": "Dry",
+            "water": "Water"
+          }
         }
       }
     },
@@ -174,10 +222,8 @@
         "step": {
             "user": {
                 "data": {
-                    "platform_sensor": "Sensor entities enabled",
-                    "platform_weather": "Weather entity enabled",
-                    "mode": "Forecast Mode",
-                    "forecast": "Add 3h Forecast Sensor"
+                    "_platform_sensor": "Sensor entities enabled",
+                    "forecast_days": "Forecast sensors to show (days)"
                 },
                 "title": "Gismeteo Options"
             }

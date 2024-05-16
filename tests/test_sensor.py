@@ -3,9 +3,10 @@
 from unittest.mock import Mock, patch
 
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
-from custom_components.gismeteo.const import ATTRIBUTION, TYPE_TEMPERATURE
+from custom_components.gismeteo.const import ATTRIBUTION
 from custom_components.gismeteo.sensor import GismeteoSensor, _fix_types, _gen_entities
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
+from homeassistant.components.weather import ATTR_FORECAST_TEMP
 from homeassistant.const import CONF_MONITORED_CONDITIONS, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 
@@ -51,7 +52,7 @@ async def test__fix_types(caplog):
 async def test__gen_entities(mock_coordinator):
     """Test _gen_entities function."""
     res = _gen_entities("Test location", mock_coordinator, {}, False)
-    assert len(res) == 17
+    assert len(res) == 20
 
     res = _gen_entities(
         "Test location",
@@ -72,7 +73,7 @@ async def test_entity_initialization(hass: HomeAssistant):
     sensor = GismeteoSensor(
         coordinator,
         SensorEntityDescription(
-            key=TYPE_TEMPERATURE,
+            key=ATTR_FORECAST_TEMP,
             translation_key="temperature",
             device_class=SensorDeviceClass.TEMPERATURE,
             native_unit_of_measurement=UnitOfTemperature.CELSIUS,
