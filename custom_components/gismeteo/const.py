@@ -168,7 +168,7 @@ SENSOR_DESCRIPTIONS: Final = (
         key=ATTR_FORECAST_PRESSURE,
         translation_key="pressure",
         device_class=SensorDeviceClass.PRESSURE,
-        native_unit_of_measurement=UnitOfPressure.HPA,
+        native_unit_of_measurement=UnitOfPressure.MMHG,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_PRECIPITATION_AMOUNT,
@@ -302,7 +302,7 @@ FORECAST_SENSOR_DESCRIPTIONS: Final = (
         key=ATTR_FORECAST_PRESSURE,
         translation_key="pressure_forecast",
         device_class=SensorDeviceClass.PRESSURE,
-        native_unit_of_measurement=UnitOfPressure.HPA,
+        native_unit_of_measurement=UnitOfPressure.MMHG,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_PRECIPITATION_AMOUNT,
