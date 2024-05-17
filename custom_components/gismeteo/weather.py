@@ -18,6 +18,7 @@ from homeassistant.components.weather import (
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.const import (
     CONF_NAME,
+    UnitOfPrecipitationDepth,
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
@@ -72,6 +73,7 @@ class GismeteoWeather(GismeteoEntity, CoordinatorWeatherEntity):
     _attr_attribution = ATTRIBUTION
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.MMHG
+    _attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
     _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
     _attr_supported_features = (
         WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY

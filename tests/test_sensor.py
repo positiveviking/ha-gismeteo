@@ -52,7 +52,7 @@ async def test__fix_types(caplog):
 async def test__gen_entities(mock_coordinator):
     """Test _gen_entities function."""
     res = _gen_entities("Test location", mock_coordinator, {}, False)
-    assert len(res) == 20
+    assert len(res) == 21
 
     res = _gen_entities(
         "Test location",

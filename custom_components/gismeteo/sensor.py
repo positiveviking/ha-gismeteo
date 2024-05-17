@@ -172,8 +172,6 @@ class GismeteoSensor(GismeteoEntity, SensorEntity):
         super().__init__(coordinator, location_name)
 
         self.entity_description = description
-        # if day:
-        # self.entity_description.translation_key += "-day"
 
         self._attr_unique_id = (
             f"{coordinator.unique_id}-{description.key}"

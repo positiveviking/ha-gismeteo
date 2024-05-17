@@ -116,69 +116,99 @@ I put a lot of work into making this repo and component available and updated to
 > >   How many days ahead to make forecast sensors.\
 > >   **Note:** If you only need a forecast sensors for today, specify `0`.
 
+When `sensors` option are enabled, it creates 21 sensors. Each shows one aspect of current weather. Only few basic sensors are enabled by default. But you can enable any sensor through device settings.
 
-> > > **condition**\
-> > >   A human-readable text summary.
-> > >
-> > > **temperature**\
-> > >   The current temperature of air.
-> > >
-> > > **temperature_feels_like**\
-> > >   The current air temperature feels like.
-> > >
-> > > **humidity**\
-> > >   The relative humidity of air.
-> > >
-> > > **pressure**\
-> > >   The sea-level air pressure in millibars.\
-> > >   At the same time, a second sensor is created, indicating the same pressure in mmHg.
-> > >
-> > > **wind_speed**\
-> > >   The wind speed.
-> > >
-> > > **wind_bearing**\
-> > >   The wind bearing.
-> > >
-> > > **clouds**\
-> > >   Description about cloud coverage.
-> > >
-> > > **rain**\
-> > >   The rain volume.
-> > >
-> > > **snow**\
-> > >   The snow volume.
-> > >
-> > > **storm**\
-> > >   The storm prediction.
-> > >
-> > > **geomagnetic**\
-> > >   The geomagnetic field value:\
-> > >   1 = No noticeable geomagnetic disturbance\
-> > >   2 = Small geomagnetic disturbances\
-> > >   3 = Weak geomagnetic storm\
-> > >   4 = Small geomagnetic storm\
-> > >   5 = Moderate geomagnetic storm\
-> > >   6 = Severe geomagnetic storm\
-> > >   7 = Hard geomagnetic storm\
-> > >   8 = Extreme geomagnetic storm
-> > >
-> > > **water_temperature**\
-> > >   The current temperature of water.
-> > >
-> > > **allergy_birch**\
-> > >   Birch pollen concentration:\
-> > >   1–10 = Low\
-> > >   11–50 = Moderate\
-> > >   51–500 = High\
-> > >   501+ = Very high
-> > >
-> > > **uv_index**\
-> > >   The ultraviolet index:\
-> > >   0–2 = Low\
-> > >   3–5 = Moderate\
-> > >   6–7 = High\
-> > >   8–10 = Very high\
-> > >   11+ = Extreme
+When you add `forecast_days` option, integration creates additional 21 sensors for each day. Each shows one aspect of forecast weather for that day. As usual, only few basic sensors are enabled by default.
+
+List of sensors that will be created:
+> **condition**\
+>   A human-readable text summary.
+>
+> **temperature**\
+>   The current temperature of air.
+>
+> **apparent_temperature**\
+>   The current apparent air temperature.
+>
+> **humidity**\
+>   The relative humidity of air.
+>
+> **pressure**\
+>   The sea-level air pressure in millibars.\
+>   At the same time, a second sensor is created, indicating the same pressure in mmHg.
+>
+> **wind_speed**\
+>   The wind speed.
+>
+> **wind_gusts_speed**\
+>   The wind gusts speed.
+>
+> **wind_bearing**\
+>   The wind bearing as an angle.
+>
+> **wind_bearing_2**\
+>   The wind bearing as text.
+>
+> **cloud_coverage**\
+>   Cloud coverage as a percentage.
+>
+> **precipitation**\
+>   The precipitation amount volume.
+>
+> **rain_amount**\
+>   The rain amount volume.
+>
+> **snow_amount**\
+>   The snow amount volume.
+>
+> **storm**\
+>   The storm prediction.
+>
+> **geomagnetic_field**\
+>   The geomagnetic field value:\
+>   1 = No noticeable geomagnetic disturbance\
+>   2 = Small geomagnetic disturbances\
+>   3 = Weak geomagnetic storm\
+>   4 = Small geomagnetic storm\
+>   5 = Moderate geomagnetic storm\
+>   6 = Severe geomagnetic storm\
+>   7 = Hard geomagnetic storm\
+>   8 = Extreme geomagnetic storm
+>
+> **water_temperature**\
+>   The temperature of water.
+>
+> **uv_index**\
+>   The ultraviolet index:\
+>   0–2 = Low\
+>   3–5 = Moderate\
+>   6–7 = High\
+>   8–10 = Very high\
+>   11+ = Extreme
+>
+> **birch_pollen**\
+>   Birch pollen concentration index:\
+>   1–10 = Low\
+>   11–50 = Moderate\
+>   51–500 = High\
+>   501+ = Very high
+>
+> **grass_pollen**\
+>   Cereal grasses pollen concentration index:\
+>   1–10 = Low\
+>   11–50 = Moderate\
+>   51–500 = High\
+>   501+ = Very high
+>
+> **ragweed_pollen**\
+>   Ragweed pollen concentration index:\
+>   1–10 = Low\
+>   11–50 = Moderate\
+>   51–500 = High\
+>   501+ = Very high
+>
+> **road_condition**\
+>   Road surface condition as text.
 
 ## Track updates
 
