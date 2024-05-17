@@ -94,7 +94,8 @@
           "state": {
             "none": "No data",
             "dry": "Dry",
-            "water": "Water"
+            "water": "Water",
+            "wet": "Wet"
           }
         },
         "condition_forecast": {
@@ -190,7 +191,8 @@
           "state": {
             "none": "No data",
             "dry": "Dry",
-            "water": "Water"
+            "water": "Water",
+            "wet": "Wet"
           }
         }
       }

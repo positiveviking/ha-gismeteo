@@ -536,6 +536,7 @@ class GismeteoApiClient:
             "Нет данных": None,
             "Сухая дорога": "dry",
             "Вода": "water",
+            "Влажная дорога": "wet",
         }
         try:
             return rcs[rc]
