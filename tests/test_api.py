@@ -20,6 +20,7 @@ from custom_components.gismeteo.const import (
     ATTR_FORECAST_PHENOMENON,
     ATTR_FORECAST_PRECIPITATION_INTENSITY,
     ATTR_FORECAST_PRECIPITATION_TYPE,
+    ATTR_SUNRISE,
     CONDITION_FOG_CLASSES,
     FORECAST_MODE_DAILY,
 )
@@ -34,6 +35,7 @@ from homeassistant.components.weather import (
     ATTR_CONDITION_RAINY,
     ATTR_CONDITION_SNOWY,
     ATTR_CONDITION_SNOWY_RAINY,
+    ATTR_CONDITION_SUNNY,
     ATTR_CONDITION_WINDY,
     ATTR_CONDITION_WINDY_VARIANT,
     ATTR_FORECAST_CLOUD_COVERAGE,
@@ -503,8 +505,16 @@ async def test_condition():
 
     data[ATTR_FORECAST_CLOUD_COVERAGE] = 0
 
+    assert gismeteo.condition(data) == ATTR_CONDITION_SUNNY
+    assert gismeteo_d.condition(data) == ATTR_CONDITION_SUNNY
+
+    tmp = data[ATTR_SUNRISE]
+    data[ATTR_SUNRISE] = dt_util.now().replace(hour=23, minute=59, second=59)
+
     assert gismeteo.condition(data) == ATTR_CONDITION_CLEAR_NIGHT
     assert gismeteo_d.condition(data) == ATTR_CONDITION_CLEAR_NIGHT
+
+    data[ATTR_SUNRISE] = tmp
 
     data[ATTR_FORECAST_CLOUD_COVERAGE] = 1
 

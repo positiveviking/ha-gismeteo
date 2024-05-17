@@ -319,8 +319,8 @@ class GismeteoApiClient:
             return None
         if cld == 0:
             if mode == FORECAST_MODE_DAILY or (
-                src.get(ATTR_FORECAST_TIME, dt_util.now())
-                < src.get(ATTR_SUNRISE)
+                src.get(ATTR_SUNRISE)
+                < src.get(ATTR_FORECAST_TIME, dt_util.now())
                 < src.get(ATTR_SUNSET)
             ):
                 cond = ATTR_CONDITION_SUNNY  # Sunshine
