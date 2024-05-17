@@ -70,12 +70,11 @@ from .const import (
     ATTR_SUNSET,
     CONDITION_FOG_CLASSES,
     ENDPOINT_URL,
-    FORECAST_MODE_DAILY,
-    FORECAST_MODE_HOURLY,
     PARSED_UPDATE_INTERVAL,
     PARSER_URL_FORMAT,
     PARSER_USER_AGENT,
     PRECIPITATION_AMOUNT,
+    ForecastMode,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -174,13 +173,13 @@ class GismeteoApiClient:
         """Return current weather data."""
         return self._current
 
-    def forecast_data(self, pos: int, mode: str = FORECAST_MODE_HOURLY):
+    def forecast_data(self, pos: int, mode: str = ForecastMode.HOURLY):
         """Return forecast data."""
         forecast = []
         now = dt_util.now()
         for data in (
             self._forecast_hourly
-            if mode == FORECAST_MODE_HOURLY
+            if mode == ForecastMode.HOURLY
             else self._forecast_daily
         ):
             fc_time = data.get(ATTR_FORECAST_TIME)
@@ -310,7 +309,7 @@ class GismeteoApiClient:
                 return None
         return res
 
-    def condition(self, src=None, mode: str = FORECAST_MODE_HOURLY) -> str | None:
+    def condition(self, src=None, mode: str = ForecastMode.HOURLY) -> str | None:
         """Return the condition summary."""
         src = src or self._current
 
@@ -318,7 +317,7 @@ class GismeteoApiClient:
         if cld is None:
             return None
         if cld == 0:
-            if mode == FORECAST_MODE_DAILY or (
+            if mode == ForecastMode.DAILY or (
                 src.get(ATTR_SUNRISE)
                 < src.get(ATTR_FORECAST_TIME, dt_util.now())
                 < src.get(ATTR_SUNSET)
@@ -418,7 +417,7 @@ class GismeteoApiClient:
                 7: "w",
                 8: "nw",
             }[bearing]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             _LOGGER.error('Unknown wind bearing value "%s"', bearing)
             return None
 
@@ -443,7 +442,7 @@ class GismeteoApiClient:
                 2: "snow",
                 3: "snow-rain",
             }[pt]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             _LOGGER.error('Unknown precipitation type value "%s"', pt)
             return None
 
@@ -463,7 +462,7 @@ class GismeteoApiClient:
                 2: "normal",
                 3: "heavy",
             }[pt]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             _LOGGER.error('Unknown precipitation type value "%s"', pt)
             return None
 
@@ -509,27 +508,27 @@ class GismeteoApiClient:
 
     def pollen_birch(self, src=None) -> int | None:
         """Return birch pollen value."""
-        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        src = src or self.forecast_data(0, ForecastMode.DAILY)
         return src.get(ATTR_FORECAST_POLLEN_BIRCH)
 
     def pollen_grass(self, src=None) -> int | None:
         """Return grass pollen value."""
-        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        src = src or self.forecast_data(0, ForecastMode.DAILY)
         return src.get(ATTR_FORECAST_POLLEN_GRASS)
 
     def pollen_ragweed(self, src=None) -> int | None:
         """Return grass pollen value."""
-        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        src = src or self.forecast_data(0, ForecastMode.DAILY)
         return src.get(ATTR_FORECAST_POLLEN_RAGWEED)
 
     def uv_index(self, src=None) -> float | None:
         """Return UV index."""
-        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        src = src or self.forecast_data(0, ForecastMode.DAILY)
         return src.get(ATTR_FORECAST_UV_INDEX)
 
     def road_condition(self, src=None) -> str | None:
         """Return road condition."""
-        src = src or self.forecast_data(0, FORECAST_MODE_DAILY)
+        src = src or self.forecast_data(0, ForecastMode.DAILY)
         rc = src.get(ATTR_FORECAST_ROAD_CONDITION)
         if not rc:
             return None
@@ -540,17 +539,17 @@ class GismeteoApiClient:
         }
         try:
             return rcs[rc]
-        except KeyError:
+        except KeyError:  # pragma: no cover
             _LOGGER.error('Unknown road condition value "%s"', rc)
             return None
 
-    def forecast(self, mode: str = FORECAST_MODE_HOURLY) -> list[GismeteoForecast]:
+    def forecast(self, mode: str = ForecastMode.HOURLY) -> list[GismeteoForecast]:
         """Return the forecast array."""
         now = dt_util.now()
         forecast = []
         for i in (
             self._forecast_hourly
-            if mode == FORECAST_MODE_HOURLY
+            if mode == ForecastMode.HOURLY
             else self._forecast_daily
         ):
             fc_time = i.get(ATTR_FORECAST_TIME)
@@ -582,10 +581,7 @@ class GismeteoApiClient:
                 if v is not None
             }
 
-            if (
-                mode == FORECAST_MODE_DAILY
-                and i.get(ATTR_FORECAST_TEMP_LOW) is not None
-            ):
+            if mode == ForecastMode.DAILY and i.get(ATTR_FORECAST_TEMP_LOW) is not None:
                 data[ATTR_FORECAST_NATIVE_TEMP_LOW] = i.get(ATTR_FORECAST_TEMP_LOW)
 
             if fc_time < now:

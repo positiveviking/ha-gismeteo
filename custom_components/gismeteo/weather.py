@@ -26,14 +26,7 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 
 from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
-from .const import (
-    ATTRIBUTION,
-    COORDINATOR,
-    DOMAIN,
-    DOMAIN_YAML,
-    FORECAST_MODE_DAILY,
-    FORECAST_MODE_HOURLY,
-)
+from .const import ATTRIBUTION, COORDINATOR, DOMAIN, DOMAIN_YAML, ForecastMode
 from .entity import GismeteoEntity
 
 _LOGGER = logging.getLogger(__name__)
@@ -145,9 +138,9 @@ class GismeteoWeather(GismeteoEntity, CoordinatorWeatherEntity):
     @callback
     def _async_forecast_daily(self) -> list[Forecast] | None:
         """Return the daily forecast in native units."""
-        return self._gismeteo.forecast(FORECAST_MODE_DAILY)
+        return self._gismeteo.forecast(ForecastMode.DAILY)
 
     @callback
     def _async_forecast_hourly(self) -> list[Forecast] | None:
         """Return the hourly forecast in native units."""
-        return self._gismeteo.forecast(FORECAST_MODE_HOURLY)
+        return self._gismeteo.forecast(ForecastMode.HOURLY)

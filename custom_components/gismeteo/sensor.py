@@ -40,9 +40,9 @@ from .const import (
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
-    FORECAST_MODE_DAILY,
     FORECAST_SENSOR_DESCRIPTIONS,
     SENSOR_DESCRIPTIONS,
+    ForecastMode,
 )
 from .entity import GismeteoEntity
 
@@ -192,11 +192,18 @@ class GismeteoSensor(GismeteoEntity, SensorEntity):
         """Return the value reported by the sensor."""
         try:
 
-            return getattr(self._gismeteo, self.entity_description.key)(
-                self._gismeteo.forecast_data(self._day, FORECAST_MODE_DAILY)
-                if self._day is not None
-                else None
-            )
+            if self._day is None:
+                res = getattr(self._gismeteo, self.entity_description.key)()
+            else:
+                forecast = self._gismeteo.forecast_data(self._day, ForecastMode.DAILY)
+                if self.entity_description.key == ATTR_FORECAST_CONDITION:
+                    res = getattr(self._gismeteo, self.entity_description.key)(
+                        forecast, ForecastMode.DAILY
+                    )
+                else:
+                    res = getattr(self._gismeteo, self.entity_description.key)(forecast)
+
+            return res
 
         except KeyError:  # pragma: no cover
             _LOGGER.warning(

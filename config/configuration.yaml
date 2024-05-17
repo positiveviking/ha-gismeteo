@@ -9,7 +9,8 @@ logger:
 # debugpy:
 
 gismeteo:
-  sweet_home: {}
+  sweet_home:
+    sensors: {}
 
   dacha:
     name: Our Country House

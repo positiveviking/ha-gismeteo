@@ -8,6 +8,7 @@ https://github.com/Limych/ha-gismeteo/
 """
 
 from datetime import timedelta
+from enum import StrEnum
 from typing import Final
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
@@ -35,7 +36,7 @@ from homeassistant.const import (
 # Base component constants
 NAME: Final = "Gismeteo"
 DOMAIN: Final = "gismeteo"
-VERSION: Final = "3.0.0-beta2"
+VERSION: Final = "3.0.0-beta3"
 ATTRIBUTION: Final = "Data provided by Gismeteo"
 ISSUE_URL: Final = "https://github.com/Limych/ha-gismeteo/issues"
 #
@@ -61,9 +62,6 @@ CONF_FORECAST_DAYS: Final = "forecast_days"
 CONF_PLATFORMS: Final = "platforms"
 CONF_YAML: Final = "_yaml"
 CONF_PLATFORM_FORMAT: Final = "_platform_{}"
-
-FORECAST_MODE_HOURLY: Final = "hourly"
-FORECAST_MODE_DAILY: Final = "daily"
 
 # Defaults
 DEFAULT_NAME: Final = "Gismeteo"
@@ -132,6 +130,14 @@ CONDITION_FOG_CLASSES: Final = [
 PRECIPITATION_AMOUNT: Final = (0, 2, 6, 16)
 
 DEVICE_CLASS_TPL: Final = DOMAIN + "__{}"
+
+
+class ForecastMode(StrEnum):
+    """Forecast modes."""
+
+    HOURLY = "hourly"
+    DAILY = "daily"
+
 
 SENSOR_DESCRIPTIONS: Final = (
     SensorEntityDescription(

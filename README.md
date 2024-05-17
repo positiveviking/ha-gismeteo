@@ -68,7 +68,7 @@ for today and 2 days forward.
 # Example configuration.yaml entry
 gismeteo:
   sweet_home:
-    sensors:
+    sensors: {}
 
   dacha:
     name: Our Country House

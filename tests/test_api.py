@@ -22,7 +22,7 @@ from custom_components.gismeteo.const import (
     ATTR_FORECAST_PRECIPITATION_TYPE,
     ATTR_SUNRISE,
     CONDITION_FOG_CLASSES,
-    FORECAST_MODE_DAILY,
+    ForecastMode,
 )
 from homeassistant.components.weather import (
     ATTR_CONDITION_CLEAR_NIGHT,
@@ -494,7 +494,7 @@ async def test_condition():
     assert gismeteo.condition() == ATTR_CONDITION_SNOWY
     assert gismeteo.condition(gismeteo.current_data) == ATTR_CONDITION_SNOWY
 
-    gismeteo_d = await init_gismeteo(FORECAST_MODE_DAILY)
+    gismeteo_d = await init_gismeteo(ForecastMode.DAILY)
     data = gismeteo.current_data
 
     data[ATTR_FORECAST_CLOUD_COVERAGE] = None
@@ -775,7 +775,7 @@ async def test_pollen_birch():
 
     for day, exp in enumerate([2, 2, 2, 1, 1, 3, 2]):
         assert (
-            gismeteo_d.pollen_birch(gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY))
+            gismeteo_d.pollen_birch(gismeteo_d.forecast_data(day, ForecastMode.DAILY))
             == exp
         )
 
@@ -788,7 +788,7 @@ async def test_pollen_grass():
 
     for day, exp in enumerate([None, None, None, None, None, None, None]):
         assert (
-            gismeteo_d.pollen_grass(gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY))
+            gismeteo_d.pollen_grass(gismeteo_d.forecast_data(day, ForecastMode.DAILY))
             == exp
         )
 
@@ -801,9 +801,7 @@ async def test_pollen_ragweed():
 
     for day, exp in enumerate([None, None, None, None, None, None, None]):
         assert (
-            gismeteo_d.pollen_ragweed(
-                gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY)
-            )
+            gismeteo_d.pollen_ragweed(gismeteo_d.forecast_data(day, ForecastMode.DAILY))
             == exp
         )
 
@@ -816,7 +814,7 @@ async def test_uv_index():
 
     for day, exp in enumerate([2, 4, 3, 5, 7, 1, 7]):
         assert (
-            gismeteo_d.uv_index(gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY))
+            gismeteo_d.uv_index(gismeteo_d.forecast_data(day, ForecastMode.DAILY))
             == exp
         )
 
@@ -829,9 +827,7 @@ async def test_road_condition():
 
     for day, exp in enumerate(["dry", "dry", "dry", "dry", None, None, None]):
         assert (
-            gismeteo_d.road_condition(
-                gismeteo_d.forecast_data(day, FORECAST_MODE_DAILY)
-            )
+            gismeteo_d.road_condition(gismeteo_d.forecast_data(day, ForecastMode.DAILY))
             == exp
         )
 
@@ -845,7 +841,7 @@ async def test_road_condition():
 #     ):
 #         gismeteo_d = await init_gismeteo()
 #
-#         assert gismeteo_d.forecast(FORECAST_MODE_DAILY) == [
+#         assert gismeteo_d.forecast(ForecastMode.DAILY) == [
 #             {
 #                 "datetime": datetime(2021, 2, 26, tzinfo=TZ180),
 #                 "condition": "rainy",
