@@ -137,8 +137,7 @@ List of sensors that will be created:
 >   The relative humidity of air.
 >
 > **pressure**\
->   The sea-level air pressure in millibars.\
->   At the same time, a second sensor is created, indicating the same pressure in mmHg.
+>   The sea-level air pressure.
 >
 > **wind_speed**\
 >   The wind speed.
@@ -150,7 +149,7 @@ List of sensors that will be created:
 >   The wind bearing as an angle.
 >
 > **wind_bearing_2**\
->   The wind bearing as text.
+>   The wind bearing as human-readable text.
 >
 > **cloud_coverage**\
 >   Cloud coverage as a percentage.
@@ -211,7 +210,7 @@ List of sensors that will be created:
 >   501+ = Very high
 >
 > **road_condition**\
->   Road surface condition as text.
+>   Road surface condition as a human-readable text.
 
 ## Track updates
 
