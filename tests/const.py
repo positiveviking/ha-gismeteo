@@ -1,34 +1,28 @@
 """Constants for tests."""
 
-from custom_components.gismeteo.const import CONF_PLATFORM_FORMAT
-from homeassistant.const import (
-    CONF_LATITUDE,
-    CONF_LONGITUDE,
-    CONF_NAME,
-    CONF_SENSORS,
-    Platform,
-)
+from custom_components.gismeteo.const import CONF_ADD_SENSORS
+from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME
 
-FAKE_NAME = "Home"
-FAKE_UNIQUE_ID = "test_id"
-FAKE_LATITUDE = 55.55
-FAKE_LONGITUDE = 122.12
+TEST_NAME = "Home"
+TEST_UNIQUE_ID = "test_id"
+TEST_LATITUDE = 55.55
+TEST_LONGITUDE = 122.12
 
-FAKE_CONFIG = {
-    CONF_NAME: FAKE_NAME,
-    CONF_LATITUDE: FAKE_LATITUDE,
-    CONF_LONGITUDE: FAKE_LONGITUDE,
+TEST_CONFIG = {
+    CONF_NAME: TEST_NAME,
+    CONF_LATITUDE: TEST_LATITUDE,
+    CONF_LONGITUDE: TEST_LONGITUDE,
 }
 
-FAKE_CONFIG_OPTIONS = {
-    CONF_PLATFORM_FORMAT.format(Platform.SENSOR): True,
+TEST_CONFIG_OPTIONS = {
+    CONF_ADD_SENSORS: True,
 }
 
-FAKE_CONFIG_YAML = {
+TEST_CONFIG_YAML = {
     "home": {
-        CONF_NAME: FAKE_NAME,
-        CONF_LATITUDE: FAKE_LATITUDE,
-        CONF_LONGITUDE: FAKE_LONGITUDE,
-        CONF_SENSORS: {},
+        CONF_NAME: TEST_NAME,
+        CONF_LATITUDE: TEST_LATITUDE,
+        CONF_LONGITUDE: TEST_LONGITUDE,
+        CONF_ADD_SENSORS: True,
     },
 }

@@ -62,18 +62,13 @@ PLATFORMS: Final = [Platform.SENSOR, Platform.WEATHER]
 
 # Configuration and options
 CONF_CACHE_DIR: Final = "cache_dir"
-CONF_FORECAST: Final = "forecast"
+CONF_ADD_SENSORS: Final = "add_sensors"
 CONF_FORECAST_DAYS: Final = "forecast_days"
-CONF_PLATFORMS: Final = "platforms"
-CONF_YAML: Final = "_yaml"
-CONF_PLATFORM_FORMAT: Final = "_platform_{}"
 
 # Defaults
 DEFAULT_NAME: Final = "Gismeteo"
 
 # Attributes
-ATTR_LAST_UPDATED: Final = "last_updated"
-#
 ATTR_SUNRISE: Final = "sunrise"
 ATTR_SUNSET: Final = "sunset"
 #

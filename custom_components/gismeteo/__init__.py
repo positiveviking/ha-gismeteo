@@ -18,10 +18,8 @@ from homeassistant.const import (
     CONF_API_KEY,
     CONF_LATITUDE,
     CONF_LONGITUDE,
-    CONF_MONITORED_CONDITIONS,
     CONF_NAME,
     CONF_SENSORS,
-    Platform,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -33,10 +31,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .api import ApiError, GismeteoApiClient
 from .const import (
+    CONF_ADD_SENSORS,
     CONF_CACHE_DIR,
-    CONF_FORECAST,
     CONF_FORECAST_DAYS,
-    CONF_PLATFORM_FORMAT,
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
@@ -51,27 +48,22 @@ _LOGGER = logging.getLogger(__name__)
 
 forecast_days_int = vol.All(vol.Coerce(int), vol.Range(min=0, max=6))
 
-SENSORS_SCHEMA = vol.Schema(
-    {
-        vol.Optional(CONF_FORECAST_DAYS): forecast_days_int,
-        vol.Optional(CONF_MONITORED_CONDITIONS): cv.deprecated,
-        vol.Optional(CONF_FORECAST): cv.deprecated,
-    }
-)
-
 LOCATION_SCHEMA = vol.Schema(
     {
         vol.Optional(CONF_NAME): cv.string,
         vol.Optional(CONF_API_KEY): cv.string,
         vol.Optional(CONF_LATITUDE): cv.latitude,
         vol.Optional(CONF_LONGITUDE): cv.longitude,
-        vol.Optional(CONF_SENSORS): SENSORS_SCHEMA,
+        vol.Optional(CONF_SENSORS): cv.deprecated,
+        vol.Optional(CONF_ADD_SENSORS, default=False): cv.boolean,
+        vol.Optional(CONF_FORECAST_DAYS): forecast_days_int,
         vol.Optional(CONF_CACHE_DIR): cv.string,
     }
 )
 
 CONFIG_SCHEMA = vol.Schema(
-    {DOMAIN: cv.schema_with_slug_keys(LOCATION_SCHEMA)}, extra=vol.ALLOW_EXTRA
+    {DOMAIN: cv.schema_with_slug_keys(vol.Any(LOCATION_SCHEMA, None))},
+    extra=vol.ALLOW_EXTRA,
 )
 
 
@@ -99,8 +91,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
-def _get_api_client(hass: HomeAssistant, config: ConfigType) -> GismeteoApiClient:
+def _get_api_client(
+    hass: HomeAssistant, config: ConfigType | None
+) -> GismeteoApiClient:
     """Prepare Gismeteo API client instance."""
+    if config is None:
+        config = {}
     return GismeteoApiClient(
         async_get_clientsession(hass),
         latitude=config.get(CONF_LATITUDE, hass.config.latitude),
@@ -128,26 +124,12 @@ async def _async_get_coordinator(hass: HomeAssistant, unique_id, config: dict):
     return coordinator
 
 
-def _convert_yaml_config(config: ConfigType) -> ConfigType:
-    """Convert YAML config to EntryFlow config."""
-    cfg = config.copy()
-
-    if CONF_SENSORS in cfg:
-        cfg.update(cfg[CONF_SENSORS])
-        cfg.pop(CONF_SENSORS)
-        cfg[CONF_PLATFORM_FORMAT.format(Platform.SENSOR)] = True
-
-    return cfg
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Gismeteo as config entry."""
     if entry.source == SOURCE_IMPORT:
         # Setup from configuration.yaml
-        for uid, cfg in hass.data[DOMAIN_YAML].items():
-            cfg = _convert_yaml_config(cfg)
-
-            coordinator = await _async_get_coordinator(hass, uid, cfg)
+        for uid, config in hass.data[DOMAIN_YAML].items():
+            coordinator = await _async_get_coordinator(hass, uid, config)
             hass.data[DOMAIN][uid] = {
                 COORDINATOR: coordinator,
             }

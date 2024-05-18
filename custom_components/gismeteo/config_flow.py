@@ -15,15 +15,15 @@ import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.config_entries import SOURCE_IMPORT
-from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME, Platform
+from homeassistant.const import CONF_LATITUDE, CONF_LONGITUDE, CONF_NAME
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
 
 from . import _get_api_client, forecast_days_int  # pylint: disable=unused-import
 from .api import ApiError
 from .const import (  # pylint: disable=unused-import
+    CONF_ADD_SENSORS,
     CONF_FORECAST_DAYS,
-    CONF_PLATFORM_FORMAT,
     DOMAIN,
 )
 
@@ -132,9 +132,7 @@ class GismeteoOptionsFlowHandler(config_entries.OptionsFlow):
             data_schema=self.add_suggested_values_to_schema(
                 vol.Schema(
                     {
-                        vol.Required(
-                            CONF_PLATFORM_FORMAT.format(Platform.SENSOR)
-                        ): bool,
+                        vol.Required(CONF_ADD_SENSORS, default=False): bool,
                         vol.Optional(CONF_FORECAST_DAYS): forecast_days_int,
                     }
                 ),

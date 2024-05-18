@@ -68,14 +68,13 @@ for today and 2 days forward.
 # Example configuration.yaml entry
 gismeteo:
   sweet_home:
-    sensors: {}
 
   dacha:
     name: Our Country House
     latitude: ...
     longitude: ...
-    sensors:
-      forecast_days: 2
+    add_sensors: yes
+    forecast_days: 2
 ```
 
 See below detailed descriptions to configure component.
@@ -107,14 +106,15 @@ I put a lot of work into making this repo and component available and updated to
 >   _(float) (Optional) (Default: coordinates from the Home Assistant configuration)_\
 >   Longitude coordinate to monitor weather of (required if `latitude` is specified).
 >
-> **sensors:**\
->   _(list) (Optional)_\
->   Setup for list of forecast sensors to display in the frontend.
+> **add_sensors:**\
+>   _(boolean) (Optional) (Default: false)_\
+>   Enable this option to add current weather and forecast sensors to the frontend.
 >
-> > **forecast_days:**\
-> >   _(positive int; 0–6) (Optional) (Default: do not create any sensors)_\
-> >   How many days ahead to make forecast sensors.\
-> >   **Note:** If you only need a forecast sensors for today, specify `0`.
+> **forecast_days:**\
+>   _(positive int; 0–6) (Optional) (Default: do not create any sensors)_\
+>   How many days ahead to make forecast sensors.\
+>   **Note:** Forecast sensors will be created only if `add_sensors` option is enabled.\
+>   **Note:** If you only need a forecast sensors for today, specify `0`.
 
 When `sensors` option are enabled, it creates 20 sensors. Each shows one aspect of current weather. Only few basic sensors are enabled by default. But you can enable any sensor through device settings.
 

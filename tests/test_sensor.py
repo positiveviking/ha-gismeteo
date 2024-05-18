@@ -10,7 +10,7 @@ from homeassistant.components.weather import ATTR_FORECAST_TEMP
 from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 
-from tests.const import FAKE_UNIQUE_ID
+from tests.const import TEST_UNIQUE_ID
 
 
 @patch("custom_components.gismeteo.GismeteoDataUpdateCoordinator")
@@ -32,7 +32,7 @@ async def test_entity_initialization(hass: HomeAssistant):
     mock_api.temperature = Mock(return_value=123)
     mock_api.attributes = {}
 
-    coordinator = GismeteoDataUpdateCoordinator(hass, FAKE_UNIQUE_ID, mock_api)
+    coordinator = GismeteoDataUpdateCoordinator(hass, TEST_UNIQUE_ID, mock_api)
     sensor = GismeteoSensor(
         coordinator,
         SensorEntityDescription(
@@ -44,7 +44,7 @@ async def test_entity_initialization(hass: HomeAssistant):
         "Test",
     )
 
-    assert sensor.unique_id == f"{FAKE_UNIQUE_ID}-temperature"
+    assert sensor.unique_id == f"{TEST_UNIQUE_ID}-temperature"
     assert sensor.should_poll is False
     assert sensor.available is True
     assert sensor.native_value == 123

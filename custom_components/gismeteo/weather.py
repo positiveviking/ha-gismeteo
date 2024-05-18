@@ -25,7 +25,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 
-from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
+from . import GismeteoDataUpdateCoordinator, deslugify
 from .const import ATTRIBUTION, COORDINATOR, DOMAIN, DOMAIN_YAML, ForecastMode
 from .entity import GismeteoEntity
 
@@ -37,10 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, config_entry, async_add_entitie
     entities = []
     if config_entry.source == SOURCE_IMPORT:
         # Setup from configuration.yaml
-        for uid, cfg in hass.data[DOMAIN_YAML].items():
-            cfg = _convert_yaml_config(cfg)
-
-            location_name = cfg.get(CONF_NAME, deslugify(uid))
+        for uid, config in hass.data[DOMAIN_YAML].items():
+            if config is None:
+                config = {}
+            location_name = config.get(CONF_NAME, deslugify(uid))
             coordinator = hass.data[DOMAIN][uid][COORDINATOR]
 
             entities.append(GismeteoWeather(coordinator, location_name))

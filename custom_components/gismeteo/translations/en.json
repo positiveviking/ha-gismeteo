@@ -221,7 +221,7 @@
         "step": {
             "user": {
                 "data": {
-                    "_platform_sensor": "Sensor entities enabled",
+                    "add_sensors": "Sensor entities enabled",
                     "forecast_days": "Forecast sensors to show (days)"
                 },
                 "title": "Gismeteo Options"

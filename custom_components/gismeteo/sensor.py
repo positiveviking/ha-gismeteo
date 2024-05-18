@@ -19,16 +19,16 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.components.weather import ATTR_FORECAST_CONDITION
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry
-from homeassistant.const import CONF_NAME, Platform
+from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, StateType
 
-from . import GismeteoDataUpdateCoordinator, _convert_yaml_config, deslugify
+from . import GismeteoDataUpdateCoordinator, deslugify
 from .const import (
     ATTRIBUTION,
+    CONF_ADD_SENSORS,
     CONF_FORECAST_DAYS,
-    CONF_PLATFORM_FORMAT,
     COORDINATOR,
     DOMAIN,
     DOMAIN_YAML,
@@ -75,23 +75,23 @@ async def async_setup_entry(
     entities = []
     if config_entry.source == SOURCE_IMPORT:
         # Setup from configuration.yaml
-        for uid, cfg in hass.data[DOMAIN_YAML].items():
-            cfg = _convert_yaml_config(cfg)
-
-            if cfg.get(CONF_PLATFORM_FORMAT.format(Platform.SENSOR), False) is False:
+        for uid, config in hass.data[DOMAIN_YAML].items():
+            if config is None:
+                config = {}
+            if not config.get(CONF_ADD_SENSORS):
                 continue  # pragma: no cover
 
-            location_name = cfg.get(CONF_NAME, deslugify(uid))
+            location_name = config.get(CONF_NAME, deslugify(uid))
             coordinator = hass.data[DOMAIN][uid][COORDINATOR]
 
-            entities.extend(_gen_entities(location_name, coordinator, cfg))
+            entities.extend(_gen_entities(location_name, coordinator, config))
 
     else:
         # Setup from config entry
         config = config_entry.data.copy()  # type: ConfigType
         config.update(config_entry.options)
 
-        if config.get(CONF_PLATFORM_FORMAT.format(Platform.SENSOR), False) is False:
+        if not config.get(CONF_ADD_SENSORS):
             return  # pragma: no cover
 
         location_name = config[CONF_NAME]

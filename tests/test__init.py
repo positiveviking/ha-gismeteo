@@ -5,22 +5,21 @@ from unittest.mock import patch
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry, load_fixture
 
-from custom_components.gismeteo import _convert_yaml_config, deslugify
+from custom_components.gismeteo import deslugify
 from custom_components.gismeteo.api import ApiError, GismeteoApiClient
-from custom_components.gismeteo.const import CONF_PLATFORM_FORMAT, DOMAIN, DOMAIN_YAML
+from custom_components.gismeteo.const import DOMAIN, DOMAIN_YAML
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.weather import DOMAIN as WEATHER_DOMAIN
 from homeassistant.config_entries import SOURCE_IMPORT, ConfigEntry, ConfigEntryState
-from homeassistant.const import CONF_SENSORS
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 
 from .const import (
-    FAKE_CONFIG,
-    FAKE_CONFIG_OPTIONS,
-    FAKE_CONFIG_YAML,
-    FAKE_NAME,
-    FAKE_UNIQUE_ID,
+    TEST_CONFIG,
+    TEST_CONFIG_OPTIONS,
+    TEST_CONFIG_YAML,
+    TEST_NAME,
+    TEST_UNIQUE_ID,
 )
 
 
@@ -39,10 +38,10 @@ async def async_init_integration(
     if config_entry is None:
         config_entry = MockConfigEntry(
             domain=DOMAIN,
-            title=FAKE_NAME,
-            unique_id=FAKE_UNIQUE_ID,
-            data=FAKE_CONFIG,
-            options=FAKE_CONFIG_OPTIONS,
+            title=TEST_NAME,
+            unique_id=TEST_UNIQUE_ID,
+            data=TEST_CONFIG,
+            options=TEST_CONFIG_OPTIONS,
         )
 
     config_entry.add_to_hass(hass)
@@ -62,26 +61,11 @@ async def test_async_setup(hass: HomeAssistant):
 async def test_async_setup_yaml(hass: HomeAssistant):
     """Test a successful setup component from YAML."""
     with patch.object(hass.config_entries.flow, "async_init") as init:
-        await async_setup_component(hass, DOMAIN, {DOMAIN: FAKE_CONFIG_YAML})
+        await async_setup_component(hass, DOMAIN, {DOMAIN: TEST_CONFIG_YAML})
         await hass.async_block_till_done()
 
-        assert hass.data[DOMAIN_YAML] == FAKE_CONFIG_YAML
+        assert hass.data[DOMAIN_YAML] == TEST_CONFIG_YAML
         assert init.call_count == 1
-
-
-def test__convert_yaml_config():
-    """Test convert YAML config to EntryFlow config."""
-    assert not _convert_yaml_config({})
-    assert _convert_yaml_config({"qwe": "asd"}) == {"qwe": "asd"}
-
-    cfg = {
-        CONF_SENSORS: {"zxc": "qwe"},
-    }
-    expected = {
-        "zxc": "qwe",
-        CONF_PLATFORM_FORMAT.format(SENSOR_DOMAIN): True,
-    }
-    assert _convert_yaml_config(cfg) == expected
 
 
 async def test_async_setup_entry(hass: HomeAssistant, gismeteo_api):
@@ -99,15 +83,15 @@ async def test_async_setup_entry(hass: HomeAssistant, gismeteo_api):
 
 async def test_async_setup_entry_yaml(hass: HomeAssistant, gismeteo_api):
     """Test a successful setup entry from YAML."""
-    hass.data[DOMAIN_YAML] = FAKE_CONFIG_YAML
+    hass.data[DOMAIN_YAML] = TEST_CONFIG_YAML
 
     await async_init_integration(
         hass,
         MockConfigEntry(
             domain=DOMAIN,
             source=SOURCE_IMPORT,
-            title=FAKE_NAME,
-            unique_id=FAKE_UNIQUE_ID,
+            title=TEST_NAME,
+            unique_id=TEST_UNIQUE_ID,
             data={},
         ),
     )

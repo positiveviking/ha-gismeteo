@@ -221,7 +221,7 @@
         "step": {
             "user": {
                 "data": {
-                    "_platform_sensor": "Сенсоры включены",
+                    "add_sensors": "Сенсоры включены",
                     "forecast_days": "Сенсоры прогноза на (дней)"
                 },
                 "title": "Настройки Gismeteo"
