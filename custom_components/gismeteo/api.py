@@ -474,7 +474,11 @@ class GismeteoApiClient:
         """Return the cloud coverage amount in percents."""
         src = src or self._current
         cloudiness = src.get(ATTR_FORECAST_CLOUD_COVERAGE)
-        return int(cloudiness * 100 / 3) if cloudiness is not None else None
+        return (
+            50
+            if cloudiness == 101
+            else int(cloudiness * 100 / 3) if cloudiness is not None else None
+        )
 
     def rain_amount(self, src=None) -> float | None:
         """Return the rain amount in mm."""

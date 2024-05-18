@@ -11,7 +11,11 @@ from datetime import timedelta
 from enum import StrEnum
 from typing import Final
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntityDescription,
+    SensorStateClass,
+)
 from homeassistant.components.weather import (
     ATTR_FORECAST_APPARENT_TEMP,
     ATTR_FORECAST_CLOUD_COVERAGE,
@@ -152,30 +156,35 @@ SENSOR_DESCRIPTIONS: Final = (
         translation_key="temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_APPARENT_TEMP,
         translation_key="apparent_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_HUMIDITY,
         translation_key="humidity",
         device_class=SensorDeviceClass.HUMIDITY,
         native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_PRESSURE,
         translation_key="pressure",
         device_class=SensorDeviceClass.PRESSURE,
         native_unit_of_measurement=UnitOfPressure.MMHG,
+        state_class=SensorStateClass.MEASUREMENT,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_PRECIPITATION_AMOUNT,
         translation_key="precipitation",
         device_class=SensorDeviceClass.PRECIPITATION,
         native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -183,6 +192,7 @@ SENSOR_DESCRIPTIONS: Final = (
         translation_key="wind_speed",
         icon="mdi:weather-windy",
         native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -190,6 +200,7 @@ SENSOR_DESCRIPTIONS: Final = (
         translation_key="wind_bearing",
         icon="mdi:weather-windy",
         native_unit_of_measurement=DEGREE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -203,6 +214,7 @@ SENSOR_DESCRIPTIONS: Final = (
         translation_key="cloud_coverage",
         icon="mdi:weather-partly-cloudy",
         native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -211,6 +223,7 @@ SENSOR_DESCRIPTIONS: Final = (
         icon="mdi:weather-rainy",
         device_class=SensorDeviceClass.PRECIPITATION,
         native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -219,18 +232,21 @@ SENSOR_DESCRIPTIONS: Final = (
         icon="mdi:weather-snowy",
         device_class=SensorDeviceClass.PRECIPITATION,
         native_unit_of_measurement=UnitOfPrecipitationDepth.MILLIMETERS,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_IS_STORM,
         translation_key="is_storm",
         icon="mdi:weather-lightning",
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_GEOMAGNETIC_FIELD,
         translation_key="geomagnetic_field",
         icon="mdi:magnet-on",
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -238,26 +254,31 @@ SENSOR_DESCRIPTIONS: Final = (
         translation_key="water_temperature",
         device_class=SensorDeviceClass.TEMPERATURE,
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_UV_INDEX,
         translation_key="uv_index",
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_POLLEN_BIRCH,
         translation_key="pollen_birch",
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_POLLEN_GRASS,
         translation_key="pollen_grass",
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
         key=ATTR_FORECAST_POLLEN_RAGWEED,
         translation_key="pollen_ragweed",
+        state_class=SensorStateClass.MEASUREMENT,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
