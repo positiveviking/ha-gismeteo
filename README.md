@@ -59,11 +59,9 @@ I also suggest you [visit the support topic][forum] on the community forum.
 Adding the following to your `configuration.yaml` file will create two weather locations,
 one for the home coordinates and one for the remote location.
 
-The first location will create three entities: hourly weather provider and two sensors
-(for current temperature and current humidity). The second location will create eight
-sensors: four groups of sensors (temperature + humidity) for current weather and forecasts
-for today and 2 days forward.
-
+The first location will create one entity: just weather provider. The second location will create 21
+sensors: four groups of sensors for current weather and forecasts for today and 2 days forward.
+Another 78 sensors will be created but disabled. You can enable that sensors through device settings.
 ```yaml
 # Example configuration.yaml entry
 gismeteo:

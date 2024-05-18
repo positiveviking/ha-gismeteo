@@ -15,5 +15,5 @@ gismeteo:
     name: Our Country House
     latitude: 46.0561601
     longitude: 13.1741225
-    sensors:
-      forecast_days: 2
+    add_sensors: yes
+    forecast_days: 2
