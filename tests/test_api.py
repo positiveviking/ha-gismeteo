@@ -42,7 +42,7 @@ from homeassistant.components.weather import (
     ATTR_FORECAST_HUMIDITY,
     ATTR_FORECAST_NATIVE_WIND_SPEED,
 )
-from homeassistant.const import ATTR_ID, STATE_UNKNOWN
+from homeassistant.const import ATTR_ID
 from homeassistant.util import dt as dt_util
 
 LATITUDE = 52.0677904
@@ -609,8 +609,8 @@ async def test_water_temperature():
     assert gismeteo.water_temperature() == 3.0
     assert gismeteo.water_temperature(gismeteo.current_data) == 3.0
 
-    assert gismeteo.water_temperature(gismeteo.forecast_data(0)) == STATE_UNKNOWN
-    assert gismeteo.water_temperature(gismeteo.forecast_data(3)) == STATE_UNKNOWN
+    assert gismeteo.water_temperature(gismeteo.forecast_data(0)) is None
+    assert gismeteo.water_temperature(gismeteo.forecast_data(3)) is None
 
 
 async def test_pressure():
@@ -622,6 +622,7 @@ async def test_pressure():
 
     assert gismeteo.pressure(gismeteo.forecast_data(0)) == 746
     assert gismeteo.pressure(gismeteo.forecast_data(3)) == 749
+    assert gismeteo.pressure(gismeteo.forecast_data(3, ForecastMode.DAILY)) is None
 
 
 async def test_humidity():

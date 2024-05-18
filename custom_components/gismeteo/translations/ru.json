@@ -36,9 +36,6 @@
         "wind_speed": {
           "name": "Скорость Ветра"
         },
-        "wind_gust_speed": {
-          "name": "Скорость Порывов Ветра"
-        },
         "wind_bearing": {
           "name": "Направление Ветра"
         },
@@ -121,6 +118,9 @@
         "temperature_forecast": {
           "name": "Прогноз Температуры {day}д"
         },
+        "temperature_low_forecast": {
+          "name": "Прогноз Нижней Температуры {day}д"
+        },
         "apparent_temperature_forecast": {
           "name": "Прогноз Ощущаемой Температуры {day}д"
         },
@@ -170,9 +170,6 @@
         },
         "geomagnetic_field_forecast": {
           "name": "Прогноз Геомагнитного Фона {day}д"
-        },
-        "water_temperature_forecast": {
-          "name": "Прогноз Тепературы Воды {day}д"
         },
         "uv_index_forecast": {
           "name": "Прогноз УФ Фона {day}д"

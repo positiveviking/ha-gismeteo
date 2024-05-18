@@ -116,7 +116,7 @@ I put a lot of work into making this repo and component available and updated to
 > >   How many days ahead to make forecast sensors.\
 > >   **Note:** If you only need a forecast sensors for today, specify `0`.
 
-When `sensors` option are enabled, it creates 21 sensors. Each shows one aspect of current weather. Only few basic sensors are enabled by default. But you can enable any sensor through device settings.
+When `sensors` option are enabled, it creates 20 sensors. Each shows one aspect of current weather. Only few basic sensors are enabled by default. But you can enable any sensor through device settings.
 
 When you add `forecast_days` option, integration creates additional 21 sensors for each day. Each shows one aspect of forecast weather for that day. As usual, only few basic sensors are enabled by default.
 
@@ -125,10 +125,13 @@ List of sensors that will be created:
 >   A human-readable text summary.
 >
 > **temperature**\
->   The current temperature of air.
+>   The air temperature.
 >
 > **apparent_temperature**\
->   The current apparent air temperature.
+>   The apparent air temperature.
+>
+> **low_temperature**\
+>   The lowest air temperature per day.
 >
 > **humidity**\
 >   The relative humidity of air.

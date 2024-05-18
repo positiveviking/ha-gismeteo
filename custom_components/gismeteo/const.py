@@ -19,6 +19,7 @@ from homeassistant.components.weather import (
     ATTR_FORECAST_HUMIDITY,
     ATTR_FORECAST_PRESSURE,
     ATTR_FORECAST_TEMP,
+    ATTR_FORECAST_TEMP_LOW,
     ATTR_FORECAST_WIND_BEARING,
     ATTR_FORECAST_WIND_GUST_SPEED,
     ATTR_FORECAST_WIND_SPEED,
@@ -36,7 +37,7 @@ from homeassistant.const import (
 # Base component constants
 NAME: Final = "Gismeteo"
 DOMAIN: Final = "gismeteo"
-VERSION: Final = "3.0.0-beta3"
+VERSION: Final = "3.0.0-beta4"
 ATTRIBUTION: Final = "Data provided by Gismeteo"
 ISSUE_URL: Final = "https://github.com/Limych/ha-gismeteo/issues"
 #
@@ -185,13 +186,6 @@ SENSOR_DESCRIPTIONS: Final = (
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
-        key=ATTR_FORECAST_WIND_GUST_SPEED,
-        translation_key="wind_gust_speed",
-        icon="mdi:weather-windy",
-        native_unit_of_measurement=UnitOfSpeed.METERS_PER_SECOND,
-        entity_registry_enabled_default=False,
-    ),
-    SensorEntityDescription(
         key=ATTR_FORECAST_WIND_BEARING,
         translation_key="wind_bearing",
         icon="mdi:weather-windy",
@@ -287,6 +281,13 @@ FORECAST_SENSOR_DESCRIPTIONS: Final = (
         native_unit_of_measurement=UnitOfTemperature.CELSIUS,
     ),
     SensorEntityDescription(
+        key=ATTR_FORECAST_TEMP_LOW,
+        translation_key="temperature_low_forecast",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        entity_registry_enabled_default=False,
+    ),
+    SensorEntityDescription(
         key=ATTR_FORECAST_APPARENT_TEMP,
         translation_key="apparent_temperature_forecast",
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -336,7 +337,6 @@ FORECAST_SENSOR_DESCRIPTIONS: Final = (
         key=ATTR_FORECAST_WIND_BEARING_LABEL,
         translation_key="wind_bearing_label_forecast",
         icon="mdi:weather-windy",
-        native_unit_of_measurement=DEGREE,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(
@@ -372,13 +372,6 @@ FORECAST_SENSOR_DESCRIPTIONS: Final = (
         key=ATTR_FORECAST_GEOMAGNETIC_FIELD,
         translation_key="geomagnetic_field_forecast",
         icon="mdi:magnet-on",
-        entity_registry_enabled_default=False,
-    ),
-    SensorEntityDescription(
-        key=ATTR_FORECAST_WATER_TEMPERATURE,
-        translation_key="water_temperature_forecast",
-        device_class=SensorDeviceClass.TEMPERATURE,
-        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
         entity_registry_enabled_default=False,
     ),
     SensorEntityDescription(

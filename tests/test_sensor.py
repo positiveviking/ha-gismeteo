@@ -3,64 +3,27 @@
 from unittest.mock import Mock, patch
 
 from custom_components.gismeteo import GismeteoDataUpdateCoordinator
-from custom_components.gismeteo.const import ATTRIBUTION
-from custom_components.gismeteo.sensor import GismeteoSensor, _fix_types, _gen_entities
+from custom_components.gismeteo.const import ATTRIBUTION, CONF_FORECAST_DAYS
+from custom_components.gismeteo.sensor import GismeteoSensor, _gen_entities
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntityDescription
 from homeassistant.components.weather import ATTR_FORECAST_TEMP
-from homeassistant.const import CONF_MONITORED_CONDITIONS, UnitOfTemperature
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 
 from tests.const import FAKE_UNIQUE_ID
 
 
-async def test__fix_types(caplog):
-    """Test _fix_types function."""
-    caplog.clear()
-    res = _fix_types([])
-    assert res == []
-    assert len(caplog.records) == 0
-
-    caplog.clear()
-    res = _fix_types(["qwe", "asd"])
-    assert res == []
-    assert len(caplog.records) == 0
-
-    caplog.clear()
-    res = _fix_types(["humidity", "temperature"])
-    assert res == ["temperature", "humidity"]
-    assert len(caplog.records) == 0
-
-    caplog.clear()
-    res = _fix_types(
-        ["humidity", "temperature", "pressure", "forecast", "pressure_mmhg"]
-    )
-    assert res == ["temperature", "humidity", "pressure"]
-    assert len(caplog.records) == 0
-
-    caplog.clear()
-    res = _fix_types(["humidity", "temperature", "weather"])
-    assert res == ["condition", "temperature", "humidity"]
-    assert len(caplog.records) == 1
-
-    caplog.clear()
-    res = _fix_types(["humidity", "temperature", "weather"], False)
-    assert res == ["condition", "temperature", "humidity"]
-    assert len(caplog.records) == 0
-
-
 @patch("custom_components.gismeteo.GismeteoDataUpdateCoordinator")
 async def test__gen_entities(mock_coordinator):
     """Test _gen_entities function."""
-    res = _gen_entities("Test location", mock_coordinator, {}, False)
-    assert len(res) == 21
+    res = _gen_entities("Test location", mock_coordinator, {})
+    assert len(res) == 20
 
-    res = _gen_entities(
-        "Test location",
-        mock_coordinator,
-        {CONF_MONITORED_CONDITIONS: ["temperature", "humidity"]},
-        False,
-    )
-    assert len(res) == 2
+    res = _gen_entities("Test location", mock_coordinator, {CONF_FORECAST_DAYS: 0})
+    assert len(res) == 41
+
+    res = _gen_entities("Test location", mock_coordinator, {CONF_FORECAST_DAYS: 1})
+    assert len(res) == 62
 
 
 async def test_entity_initialization(hass: HomeAssistant):

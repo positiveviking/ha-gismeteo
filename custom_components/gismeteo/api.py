@@ -43,13 +43,13 @@ from homeassistant.components.weather import (
     ATTR_FORECAST_NATIVE_TEMP_LOW,
     ATTR_FORECAST_NATIVE_WIND_GUST_SPEED,
     ATTR_FORECAST_NATIVE_WIND_SPEED,
-    ATTR_FORECAST_TEMP_LOW,
     ATTR_FORECAST_TIME,
     ATTR_FORECAST_UV_INDEX,
     ATTR_FORECAST_WIND_BEARING,
     Forecast,
 )
-from homeassistant.const import ATTR_ID, ATTR_LATITUDE, ATTR_LONGITUDE, STATE_UNKNOWN
+from homeassistant.const import ATTR_ID, ATTR_LATITUDE, ATTR_LONGITUDE
+from homeassistant.helpers.typing import StateType
 from homeassistant.util import Throttle, dt as dt_util
 
 from .cache import Cache
@@ -175,8 +175,8 @@ class GismeteoApiClient:
 
     def forecast_data(self, pos: int, mode: str = ForecastMode.HOURLY):
         """Return forecast data."""
-        forecast = []
         now = dt_util.now()
+        forecast = []
         for data in (
             self._forecast_hourly
             if mode == ForecastMode.HOURLY
@@ -300,8 +300,8 @@ class GismeteoApiClient:
             return {}
 
     @staticmethod
-    def _get(var: dict, ind: str, func: Callable | None = None) -> Any:
-        res = var.get(ind)
+    def _get(var: dict, k: str, func: Callable | None = None) -> StateType:
+        res = var.get(k)
         if func is not None:
             try:
                 res = func(res)
@@ -367,6 +367,11 @@ class GismeteoApiClient:
         src = src or self._current
         return src.get(ATTR_FORECAST_NATIVE_TEMP)
 
+    def templow(self, src=None) -> float | None:
+        """Return the low temperature of the day."""
+        src = src or self._current
+        return src.get(ATTR_FORECAST_NATIVE_TEMP_LOW)
+
     def apparent_temperature(self, src=None) -> float | None:
         """Return the apparent temperature."""
         temp = self.temperature(src)
@@ -382,8 +387,7 @@ class GismeteoApiClient:
     def water_temperature(self, src=None):
         """Return the temperature of water."""
         src = src or self._current
-        temperature = src.get(ATTR_FORECAST_WATER_TEMPERATURE)
-        return float(temperature) if temperature is not None else STATE_UNKNOWN
+        return src.get(ATTR_FORECAST_WATER_TEMPERATURE)
 
     def pressure(self, src=None) -> float | None:
         """Return the pressure in mmHg."""
@@ -582,8 +586,13 @@ class GismeteoApiClient:
                 if v is not None
             }
 
-            if mode == ForecastMode.DAILY and i.get(ATTR_FORECAST_TEMP_LOW) is not None:
-                data[ATTR_FORECAST_NATIVE_TEMP_LOW] = i.get(ATTR_FORECAST_TEMP_LOW)
+            if (
+                mode == ForecastMode.DAILY
+                and i.get(ATTR_FORECAST_NATIVE_TEMP_LOW) is not None
+            ):
+                data[ATTR_FORECAST_NATIVE_TEMP_LOW] = i.get(
+                    ATTR_FORECAST_NATIVE_TEMP_LOW
+                )
 
             if fc_time < now:
                 forecast = [data]
@@ -668,7 +677,8 @@ class GismeteoApiClient:
                         ATTR_FORECAST_IS_DAYTIME: sunrise < tstamp < sunset,
                         ATTR_FORECAST_CONDITION: self._get(fc_v, "descr"),
                         ATTR_FORECAST_NATIVE_TEMP: self._get(fc_v, "t", int),
-                        ATTR_FORECAST_NATIVE_PRESSURE: self._get(fc_v, "p", int),
+                        ATTR_FORECAST_NATIVE_PRESSURE: self._get(fc_v, "p", int)
+                        or None,
                         ATTR_FORECAST_HUMIDITY: self._get(fc_v, "hum", int),
                         ATTR_FORECAST_NATIVE_WIND_SPEED: self._get(fc_v, "ws", int),
                         ATTR_FORECAST_WIND_BEARING: self._get(fc_v, "wd", int),
@@ -721,8 +731,8 @@ class GismeteoApiClient:
                     ATTR_FORECAST_TIME: tstamp,
                     ATTR_FORECAST_CONDITION: self._get(day, "descr"),
                     ATTR_FORECAST_NATIVE_TEMP: self._get(day, "tmax", int),
-                    ATTR_FORECAST_TEMP_LOW: self._get(day, "tmin", int),
-                    ATTR_FORECAST_NATIVE_PRESSURE: self._get(day, "p", int),
+                    ATTR_FORECAST_NATIVE_TEMP_LOW: self._get(day, "tmin", int),
+                    ATTR_FORECAST_NATIVE_PRESSURE: self._get(day, "p", int) or None,
                     ATTR_FORECAST_HUMIDITY: self._get(day, "hum", int),
                     ATTR_FORECAST_NATIVE_WIND_SPEED: self._get(day, "ws", int),
                     ATTR_FORECAST_WIND_BEARING: self._get(day, "wd", int),
