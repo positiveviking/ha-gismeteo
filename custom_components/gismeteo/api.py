@@ -619,12 +619,15 @@ class GismeteoApiClient:
         return dt_util.parse_datetime(local_date, raise_on_error=True)
 
     @Throttle(PARSED_UPDATE_INTERVAL)
-    async def async_update_parsed(self):
+    async def async_update_parsed(self) -> None:
         """Update parsed data."""
         self._parsed = await self.async_get_parsed()
 
     async def async_update(self) -> bool:
-        """Get the latest data from Gismeteo."""
+        """Get the latest data from Gismeteo.
+
+        :raise ApiError
+        """
         response = await self.async_get_forecast()
         try:
             xml = etree.fromstring(response)

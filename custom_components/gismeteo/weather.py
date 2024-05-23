@@ -7,7 +7,6 @@ For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
-from functools import cached_property
 import logging
 
 from homeassistant.components.weather import (
@@ -85,52 +84,52 @@ class GismeteoWeather(GismeteoEntity, CoordinatorWeatherEntity):
             "location_name": location_name,
         }
 
-    @cached_property
+    @property
     def condition(self) -> str | None:
         """Return the current condition."""
         return self._gismeteo.condition()
 
-    @cached_property
+    @property
     def native_apparent_temperature(self) -> float | None:
         """Return the apparent temperature in native units."""
         return self._gismeteo.apparent_temperature()
 
-    @cached_property
+    @property
     def native_temperature(self) -> float | None:
         """Return the temperature in native units."""
         return self._gismeteo.temperature()
 
-    @cached_property
+    @property
     def native_pressure(self) -> float | None:
         """Return the pressure in native units."""
         return self._gismeteo.pressure()
 
-    @cached_property
+    @property
     def humidity(self) -> float | None:
         """Return the humidity in %."""
         return self._gismeteo.humidity()
 
-    @cached_property
+    @property
     def wind_bearing(self) -> float | str | None:
         """Return the wind bearing."""
         return self._gismeteo.wind_bearing()
 
-    @cached_property
+    @property
     def native_wind_gust_speed(self) -> float | None:
         """Return the wind gust speed in native units."""
         return self._gismeteo.wind_gust_speed()
 
-    @cached_property
+    @property
     def native_wind_speed(self) -> float | None:
         """Return the wind speed in native units."""
         return self._gismeteo.wind_speed()
 
-    @cached_property
+    @property
     def cloud_coverage(self) -> float | None:
         """Return the Cloud coverage in %."""
         return self._gismeteo.cloud_coverage()
 
-    @cached_property
+    @property
     def uv_index(self) -> float | None:
         """Return the UV index."""
         return self._gismeteo.uv_index()

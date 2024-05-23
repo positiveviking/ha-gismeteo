@@ -9,7 +9,6 @@ https://github.com/Limych/ha-gismeteo/
 
 from datetime import date, datetime
 from decimal import Decimal
-from functools import cached_property
 import logging
 
 from homeassistant.components.sensor import (
@@ -134,7 +133,7 @@ class GismeteoSensor(GismeteoEntity, SensorEntity):
 
         self._day = day
 
-    @cached_property
+    @property
     def native_value(self) -> StateType | date | datetime | Decimal:
         """Return the value reported by the sensor."""
         try:

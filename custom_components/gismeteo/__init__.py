@@ -7,6 +7,7 @@ For more details about this platform, please refer to the documentation at
 https://github.com/Limych/ha-gismeteo/
 """
 
+from functools import cached_property
 import logging
 
 from aiohttp import ClientConnectorError
@@ -27,7 +28,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.storage import STORAGE_DIR
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+    _DataT,
+)
 
 from .api import ApiError, GismeteoApiClient
 from .const import (
@@ -185,12 +190,12 @@ class GismeteoDataUpdateCoordinator(DataUpdateCoordinator):
         self.gismeteo = gismeteo
         self._unique_id = unique_id
 
-    @property
-    def unique_id(self):
-        """Return a unique_id."""
+    @cached_property
+    def unique_id(self) -> str | None:
+        """Return a unique ID."""
         return self._unique_id
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> _DataT:
         """Update data via library."""
         try:
             async with timeout(10):
