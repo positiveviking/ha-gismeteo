@@ -205,9 +205,9 @@ class GismeteoApiClient:
 
         if self._cache and cache_fname is not None:
             cache_fname += ".xml"
-            if self._cache.is_cached(cache_fname):
+            if await self._cache.is_cached(cache_fname):
                 _LOGGER.debug("Cached response used")
-                return self._cache.read_cache(cache_fname)
+                return await self._cache.read_cache(cache_fname)
 
         headers = {}
         if as_browser:
@@ -220,7 +220,7 @@ class GismeteoApiClient:
             data = await resp.text()
 
         if self._cache and cache_fname is not None and data:
-            self._cache.save_cache(cache_fname, data)
+            await self._cache.save_cache(cache_fname, data)
 
         return data
 
@@ -234,9 +234,13 @@ class GismeteoApiClient:
 
         url = (
             ENDPOINT_URL
-            + f"/cities/?lat={self._attributes[ATTR_LATITUDE]}&lng={self._attributes[ATTR_LONGITUDE]}&count=1&lang=en"
+            + f"/cities/?lat={self._attributes[ATTR_LATITUDE]}"
+            + f"&lng={self._attributes[ATTR_LONGITUDE]}&count=1&lang=en"
         )
-        cache_fname = f"location_{self._attributes[ATTR_LATITUDE]}_{self._attributes[ATTR_LONGITUDE]}"
+        cache_fname = (
+            f"location_{self._attributes[ATTR_LATITUDE]}"
+            + f"_{self._attributes[ATTR_LONGITUDE]}"
+        )
 
         response = await self._async_get_data(url, cache_fname)
         try:

@@ -100,34 +100,34 @@ def test__get_file_path():
     assert cache._get_file_path("file_name.ext") == "/some/dir/dmn.file_name.ext"
 
 
-def test_is_cached(config, cache_dir):
+async def test_is_cached(config, cache_dir):
     """Cache controller tests."""
     config["clean_dir"] = False
     cache = Cache(config)
 
     for i in cache_dir["old"]:
-        assert cache.is_cached(i) is False
+        assert await cache.is_cached(i) is False
 
     for i in cache_dir["new"]:
-        assert cache.is_cached(i) is True
+        assert await cache.is_cached(i) is True
 
     for _ in range(8):
         file_name = os.urandom(3).hex()
-        assert cache.is_cached(file_name) is False
+        assert await cache.is_cached(file_name) is False
 
 
-def test_read_cache(config, cache_dir):
+async def test_read_cache(config, cache_dir):
     """Cache controller tests."""
     cache = Cache(config)
 
     for i in cache_dir["old"]:
-        assert cache.read_cache(i) is None
+        assert await cache.read_cache(i) is None
 
     for i, con in cache_dir["new"].items():
-        assert cache.read_cache(i) == con
+        assert await cache.read_cache(i) == con
 
 
-def test_save_cache(config):
+async def test_save_cache(config):
     """Cache controller tests."""
     config["cache_dir"] = os.path.join(config["cache_dir"], os.urandom(3).hex())
     cache = Cache(config)
@@ -135,6 +135,6 @@ def test_save_cache(config):
     for _ in range(8):
         file_name = os.urandom(5).hex()
         content = os.urandom(7).hex()
-        cache.save_cache(file_name, content)
+        await cache.save_cache(file_name, content)
 
-        assert cache.read_cache(file_name) == content
+        assert await cache.read_cache(file_name) == content

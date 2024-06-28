@@ -1,3 +1,4 @@
 homeassistant>=2024.4.0
 pip>=24.0
 beautifulsoup4~=4.12
+aiofiles>=24.0.0

@@ -12,7 +12,8 @@
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/Limych/ha-gismeteo/issues",
     "requirements": [
-        "beautifulsoup4~=4.12"
+        "beautifulsoup4~=4.12",
+        "aiofiles>=24.0.0"
     ],
     "version": "3.0.0"
 }
